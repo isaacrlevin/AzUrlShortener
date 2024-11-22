@@ -13,10 +13,10 @@ env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: './src/Cloud5mins.ShortenerTools.Functions'
 
 jobs:
-  build_and_deploy_job:
+  build_and_deploy_swa:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
-    runs-on: windows-latest
-    name: Build and Deploy Job
+    runs-on: ubuntu-latest
+    name: Build and Deploy SWA
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,6 +33,13 @@ jobs:
           api_location: ""
           output_location: "wwwroot"
 
+  build-and-deploy-api:
+    runs-on: windows-latest
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    name: Build and Deploy API
+    steps:
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@v4
       - name: 'Resolve Project Dependencies Using Dotnet'
         shell: pwsh
         run: |
