@@ -1,12 +1,14 @@
-using Microsoft.Azure.Cosmos.Table;
+using Azure;
+using Azure.Data.Tables;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text.Json;
 
 namespace Cloud5mins.ShortenerTools.Core.Domain
 {
-    public class ShortUrlEntity : TableEntity
+    public class ShortUrlEntity : ITableEntity
     {
         public string Url { get; set; }
         private string _activeUrl { get; set; }
@@ -24,16 +26,20 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
 
         public string Title { get; set; }
 
+        public string Message { get; set; }
+
         public string ShortUrl { get; set; }
 
         public int Clicks { get; set; }
 
         public bool? IsArchived { get; set; }
+
+        public bool Posted { get; set; }
         public string SchedulesPropertyRaw { get; set; }
 
         private List<Schedule> _schedules { get; set; }
 
-        [IgnoreProperty]
+        [IgnoreDataMember]
         public List<Schedule> Schedules
         {
             get
@@ -57,31 +63,38 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             }
         }
 
+        public string PartitionKey { get; set; }
+        public string RowKey { get; set; }
+        public DateTimeOffset? Timestamp { get; set; }
+        public ETag ETag { get; set; }
+
         public ShortUrlEntity() { }
 
         public ShortUrlEntity(string longUrl, string endUrl)
         {
-            Initialize(longUrl, endUrl, string.Empty, null);
+            Initialize(longUrl, endUrl, string.Empty, string.Empty, null);
         }
 
         public ShortUrlEntity(string longUrl, string endUrl, Schedule[] schedules)
         {
-            Initialize(longUrl, endUrl, string.Empty, schedules);
+            Initialize(longUrl, endUrl, string.Empty, string.Empty, schedules);
         }
 
-        public ShortUrlEntity(string longUrl, string endUrl, string title, Schedule[] schedules)
+        public ShortUrlEntity(string longUrl, string endUrl, string title, string message, Schedule[] schedules)
         {
-            Initialize(longUrl, endUrl, title, schedules);
+            Initialize(longUrl, endUrl, title, message, schedules);
         }
 
-        private void Initialize(string longUrl, string endUrl, string title, Schedule[] schedules)
+        private void Initialize(string longUrl, string endUrl, string title, string message, Schedule[] schedules)
         {
             PartitionKey = endUrl.First().ToString();
             RowKey = endUrl;
             Url = longUrl;
             Title = title;
+            Message = message;
             Clicks = 0;
             IsArchived = false;
+            Posted = false;
 
             if(schedules?.Length>0)
             {
@@ -90,7 +103,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             }
         }
 
-        public static ShortUrlEntity GetEntity(string longUrl, string endUrl, string title, Schedule[] schedules)
+        public static ShortUrlEntity GetEntity(string longUrl, string endUrl, string title, string message, Schedule[] schedules)
         {
             return new ShortUrlEntity
             {
@@ -98,6 +111,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
                 RowKey = endUrl,
                 Url = longUrl,
                 Title = title,
+                Message = message,
                 Schedules = schedules.ToList<Schedule>()
             };
         }

@@ -1,4 +1,5 @@
-using Microsoft.Azure.Cosmos.Table;
+using Azure;
+using Azure.Data.Tables;
 using System.Text.Json;
 
 namespace Cloud5mins.ShortenerTools.Core.Domain
@@ -13,57 +14,69 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
         {
             StorageConnectionString = storageConnectionString;
         }
-        public CloudStorageAccount CreateStorageAccountFromConnectionString()
+        public TableServiceClient CreateStorageAccountFromConnectionString()
         {
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(StorageConnectionString);
-            return storageAccount;
+            TableServiceClient tableClient = new TableServiceClient(StorageConnectionString);
+            return tableClient;
         }
 
-        private CloudTable GetTable(string tableName)
+        private TableClient GetTable(string tableName)
         {
-            CloudStorageAccount storageAccount = CreateStorageAccountFromConnectionString();
-            CloudTableClient tableClient = storageAccount.CreateCloudTableClient(new TableClientConfiguration());
-            CloudTable table = tableClient.GetTableReference(tableName);
+            TableServiceClient tableClient = CreateStorageAccountFromConnectionString();
+            TableClient table = tableClient.GetTableClient(tableName);
             table.CreateIfNotExists();
 
             return table;
         }
-        private CloudTable GetUrlsTable()
+        private TableClient GetUrlsTable()
         {
-            CloudTable table = GetTable("UrlsDetails");
+            TableClient table = GetTable("UrlsDetails");
             return table;
         }
 
-        private CloudTable GetStatsTable()
+        private TableClient GetStatsTable()
         {
-            CloudTable table = GetTable("ClickStats");
+            TableClient table = GetTable("ClickStats");
             return table;
         }
 
         public async Task<ShortUrlEntity> GetShortUrlEntity(ShortUrlEntity row)
         {
-            TableOperation selOperation = TableOperation.Retrieve<ShortUrlEntity>(row.PartitionKey, row.RowKey);
-            TableResult result = await GetUrlsTable().ExecuteAsync(selOperation);
-            ShortUrlEntity eShortUrl = result.Result as ShortUrlEntity;
-            return eShortUrl;
+            var tableClient = GetUrlsTable();
+            var result = await tableClient.GetEntityIfExistsAsync<ShortUrlEntity>(row.PartitionKey, row.RowKey);
+            return (result.HasValue == true ? result.Value : null);
         }
 
         public async Task<List<ShortUrlEntity>> GetAllShortUrlEntities()
         {
-            var tblUrls = GetUrlsTable();
-            TableContinuationToken token = null;
-            var lstShortUrl = new List<ShortUrlEntity>();
-            do
-            {
-                // Retreiving all entities that are NOT the NextId entity 
-                // (it's the only one in the partion "KEY")
-                TableQuery<ShortUrlEntity> rangeQuery = new TableQuery<ShortUrlEntity>().Where(
-                    filter: TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.NotEqual, "KEY"));
+            var tableClient = GetUrlsTable();
 
-                var queryResult = await tblUrls.ExecuteQuerySegmentedAsync(rangeQuery, token);
-                lstShortUrl.AddRange(queryResult.Results as List<ShortUrlEntity>);
-                token = queryResult.ContinuationToken;
-            } while (token != null);
+            var lstShortUrl = new List<ShortUrlEntity>();
+            string continuationToken = null;
+            bool moreResultsAvailable = true;
+            while (moreResultsAvailable)
+            {
+                Page<ShortUrlEntity> page = tableClient
+                    .Query<ShortUrlEntity>()
+                    .AsPages(continuationToken, pageSizeHint: 10)
+                    .FirstOrDefault(); // Note: Since the pageSizeHint only limits the number of results in a single page, we explicitly only enumerate the first page.
+
+                if (page == null)
+                    break;
+
+                // Get the continuation token from the page.
+                // Note: This value can be stored so that the next page query can be executed later.
+                continuationToken = page.ContinuationToken;
+
+                IReadOnlyList<ShortUrlEntity> pageResults = page.Values;
+                moreResultsAvailable = continuationToken != null;
+
+                // Print out the results for this page.
+                foreach (ShortUrlEntity result in pageResults)
+                {
+                    lstShortUrl.AddRange(result);
+                }
+            }
             return lstShortUrl;
         }
 
@@ -74,35 +87,21 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
         /// <returns>ShortUrlEntity</returns>
         public async Task<ShortUrlEntity> GetShortUrlEntityByVanity(string vanity)
         {
-            var tblUrls = GetUrlsTable();
-            TableContinuationToken token = null;
-            ShortUrlEntity shortUrlEntity = null;
-            do
-            {
-                TableQuery<ShortUrlEntity> query = new TableQuery<ShortUrlEntity>().Where(
-                    filter: TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, vanity));
-                var queryResult = await tblUrls.ExecuteQuerySegmentedAsync(query, token);
-                shortUrlEntity = queryResult.Results.FirstOrDefault();
-            } while (token != null);
-
-            return shortUrlEntity;
+            var tableClient = GetUrlsTable();
+            Pageable<ShortUrlEntity> results = tableClient.Query<ShortUrlEntity>(ent => ent.ShortUrl == vanity);
+            return results.FirstOrDefault();
         }
         public async Task SaveClickStatsEntity(ClickStatsEntity newStats)
         {
-            TableOperation insOperation = TableOperation.InsertOrMerge(newStats);
-            TableResult result = await GetStatsTable().ExecuteAsync(insOperation);
+            var tableClient = GetStatsTable();
+            await tableClient.UpsertEntityAsync(newStats);
         }
 
         public async Task<ShortUrlEntity> SaveShortUrlEntity(ShortUrlEntity newShortUrl)
         {
-           
-            // serializing the collection easier on json shares
-            //newShortUrl.SchedulesPropertyRaw = JsonSerializer.Serialize<List<Schedule>>(newShortUrl.Schedules);
-
-            TableOperation insOperation = TableOperation.InsertOrMerge(newShortUrl);
-            TableResult result = await GetUrlsTable().ExecuteAsync(insOperation);
-            ShortUrlEntity eShortUrl = result.Result as ShortUrlEntity;
-            return eShortUrl;
+            var tableClient = GetUrlsTable();
+            await tableClient.UpsertEntityAsync(newShortUrl);
+            return newShortUrl;
         }
 
         public async Task<bool> IfShortUrlEntityExistByVanity(string vanity)
@@ -118,12 +117,18 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
         }
         public async Task<int> GetNextTableId()
         {
-            //Get current ID
-            TableOperation selOperation = TableOperation.Retrieve<NextId>("1", "KEY");
-            TableResult result = await GetUrlsTable().ExecuteAsync(selOperation);
-            NextId entity = result.Result as NextId;
+            var tableClient = GetUrlsTable();
 
-            if (entity == null)
+
+            var result = await tableClient.GetEntityIfExistsAsync<NextId>("1", "KEY");
+
+            NextId entity = null;
+
+            if (result.HasValue)
+            {
+                entity = result.Value as NextId;
+            }
+            else
             {
                 entity = new NextId
                 {
@@ -132,13 +137,12 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
                     Id = 1024
                 };
             }
+
             entity.Id++;
 
-            //Update
-            TableOperation updOperation = TableOperation.InsertOrMerge(entity);
+            tableClient.UpsertEntity(entity);
 
-            // Execute the operation.
-            await GetUrlsTable().ExecuteAsync(updOperation);
+            ShortUrlEntity updatedEntity = await tableClient.GetEntityAsync<ShortUrlEntity>(entity.PartitionKey, entity.RowKey);
 
             return entity.Id;
         }
@@ -149,6 +153,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             ShortUrlEntity originalUrl = await GetShortUrlEntity(urlEntity);
             originalUrl.Url = urlEntity.Url;
             originalUrl.Title = urlEntity.Title;
+            originalUrl.Message = urlEntity.Message;
             originalUrl.SchedulesPropertyRaw = JsonSerializer.Serialize<List<Schedule>>(urlEntity.Schedules);
 
             return await SaveShortUrlEntity(originalUrl);
@@ -157,26 +162,9 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
 
         public async Task<List<ClickStatsEntity>> GetAllStatsByVanity(string vanity)
         {
-            var tblUrls = GetStatsTable();
-            TableContinuationToken token = null;
-            var lstShortUrl = new List<ClickStatsEntity>();
-            do
-            {
-                TableQuery<ClickStatsEntity> rangeQuery;
-
-                if(string.IsNullOrEmpty(vanity)){
-                    rangeQuery = new TableQuery<ClickStatsEntity>();
-                }
-                else{
-                    rangeQuery = new TableQuery<ClickStatsEntity>().Where(
-                    filter: TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, vanity));
-                }
-
-                var queryResult = await tblUrls.ExecuteQuerySegmentedAsync(rangeQuery, token);
-                lstShortUrl.AddRange(queryResult.Results as List<ClickStatsEntity>);
-                token = queryResult.ContinuationToken;
-            } while (token != null);
-            return lstShortUrl;
+            var tableClient = GetStatsTable();
+            Pageable<ClickStatsEntity> results = tableClient.Query<ClickStatsEntity>(ent => ent.PartitionKey == vanity);
+            return results.ToList();
         }
 
 

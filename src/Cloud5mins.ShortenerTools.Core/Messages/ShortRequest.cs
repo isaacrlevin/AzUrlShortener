@@ -10,6 +10,8 @@ namespace Cloud5mins.ShortenerTools.Core.Messages
 
         public string Title { get; set; }
 
+        public string Message { get; set; }
+
         public Schedule[] Schedules { get; set; }
     }
 }

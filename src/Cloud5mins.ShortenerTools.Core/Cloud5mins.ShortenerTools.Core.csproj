@@ -1,11 +1,14 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="cronos" Version="0.8.4" />
-    <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
+	<PackageReference Include="Azure.Data.Tables" Version="12.9.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Text.Json" Version="9.0.0" />
+    <PackageReference Include="UAParser" Version="3.1.47" />
   </ItemGroup>
 </Project>
