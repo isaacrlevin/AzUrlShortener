@@ -27,23 +27,5 @@ namespace Cloud5mins.ShortenerTools.Core.Messages
 
         [Required]
         public string Url { get; set; }
-
-        private List<Schedule> _schedules;
-
-        public List<Schedule> Schedules
-        {
-            get
-            {
-                if (_schedules == null)
-                {
-                    _schedules = new List<Schedule>();
-                }
-                return _schedules;
-            }
-            set
-            {
-                _schedules = value;
-            }
-        }
     }
 }

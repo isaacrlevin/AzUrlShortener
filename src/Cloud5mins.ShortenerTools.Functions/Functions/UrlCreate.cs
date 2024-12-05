@@ -104,7 +104,7 @@ namespace Cloud5mins.ShortenerTools.Functions
 
                 if (!string.IsNullOrEmpty(vanity))
                 {
-                    newRow = new ShortUrlEntity(longUrl, vanity, title, message, postToSocial, input.Schedules);
+                    newRow = new ShortUrlEntity(longUrl, vanity, title, message, postToSocial);
                     if (await stgHelper.IfShortUrlEntityExist(newRow))
                     {
                         var badResponse = req.CreateResponse(HttpStatusCode.Conflict);
@@ -114,7 +114,7 @@ namespace Cloud5mins.ShortenerTools.Functions
                 }
                 else
                 {
-                    newRow = new ShortUrlEntity(longUrl, await Utility.GetValidEndUrl(vanity, stgHelper), title, message, postToSocial, input.Schedules);
+                    newRow = new ShortUrlEntity(longUrl, await Utility.GetValidEndUrl(vanity, stgHelper), title, message, postToSocial);
                 }
 
                 await stgHelper.SaveShortUrlEntity(newRow);

@@ -81,7 +81,7 @@ namespace Cloud5mins.ShortenerTools.Functions
                     {
                         Agent = userAgent,
                         Referrer = (!string.IsNullOrEmpty(referrer) ? new Uri(referrer) : null),
-                        LongUrl = new Uri(newUrl.ActiveUrl),
+                        LongUrl = new Uri(newUrl.Url),
                         ShortUrl = newUrl.RowKey,
                         TimeStamp = DateTime.UtcNow                         
                     };
@@ -95,7 +95,7 @@ namespace Cloud5mins.ShortenerTools.Functions
 
                     await stgHelper.SaveClickStatsEntity(click);
                     await stgHelper.SaveShortUrlEntity(newUrl);
-                    redirectUrl = WebUtility.UrlDecode(newUrl.ActiveUrl);
+                    redirectUrl = WebUtility.UrlDecode(newUrl.Url);
                 }
             }
             else

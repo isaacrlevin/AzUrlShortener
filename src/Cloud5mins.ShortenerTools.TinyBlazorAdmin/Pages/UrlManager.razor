@@ -11,7 +11,7 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 
-@attribute [Authorize(Roles = "admin")]
+@* @attribute [Authorize(Roles = "admin")] *@
 
 <PageTitle>Url Manager</PageTitle>
 
@@ -29,26 +29,12 @@ else
     <SfGrid DataSource="@urls.UrlList" id="grdUrls" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
         <GridPageSettings PageSize="15"></GridPageSettings>
         <GridColumns>
+            <GridColumn Field=@nameof(ShortUrlEntity.Timestamp) HeaderText="Timestamp" Format="d" Type="ColumnType.Date" TextAlign="TextAlign.Right" Width="130"></GridColumn>
             <GridColumn Width="70" AllowFiltering="false">
                 <Template>
                     @{
                         var url = (context as ShortUrlEntity);
                         <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => CopyToClipboardAsync(url.ShortUrl))">Copy</button>
-                    }
-                </Template>
-            </GridColumn>
-            <GridColumn Width="105" HeaderText="Schedule(s)">
-                <Template>
-                    @{
-                        var url = (context as ShortUrlEntity);
-                        if (url.Schedules != null)
-                        {
-                            <span>@url.Schedules.Count</span>
-                        }
-                        else
-                        {
-                            <span>0</span>
-                        };
                     }
                 </Template>
             </GridColumn>
@@ -136,9 +122,6 @@ else
                                             @bind-Checked="shortUrlRequest.PostToSocial"></SfCheckBox>
                             </div>
                         </div>
-                        <div>
-                            <SchedulesComponent schedules="shortUrlRequest.Schedules"></SchedulesComponent>
-                        </div>
                     </EditForm>
                 </div>
 
@@ -188,9 +171,6 @@ else
                             <InputText id="edit-url" class="form-control" placeholder="The Url to redirect" @bind-Value="editedUrl.Url" />
                             <ValidationMessage For="@(() => editedUrl.Url)" />
                         </div>
-                        <div>
-                            <SchedulesComponent schedules="@editedUrl.Schedules"></SchedulesComponent>
-                        </div>
                     </EditForm>
                 </div>
 
@@ -229,6 +209,7 @@ else
             if (response.IsSuccessStatusCode)
             {
                 urls = await response.Content.ReadFromJsonAsync<ListResponse>();
+                urls.UrlList = urls.UrlList.OrderByDescending(x => x.Timestamp).ToList();
             }
             else
             {
