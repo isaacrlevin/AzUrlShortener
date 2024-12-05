@@ -37,7 +37,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         }
 
         [Function("SchedulePostTimer")]
-        public async Task SchedulePostTimer([TimerTrigger("0 */5 * * * *")] TimerInfo myTimer)
+        public async Task SchedulePostTimer([TimerTrigger("0 0 8,11,14 * * 1-5")] TimerInfo myTimer)
         {
             if (!Debugger.IsAttached)
             {
