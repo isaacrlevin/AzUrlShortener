@@ -4,6 +4,7 @@
 @using Cloud5mins.ShortenerTools.Core.Messages;
 @using Microsoft.AspNetCore.Authorization
 @using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Buttons
 @using Syncfusion.Blazor.Inputs
 @using System.Net
 @inject HttpClient Http
@@ -129,7 +130,12 @@ else
                                            @bind-Value="shortUrlRequest.Vanity"></SfTextBox>
                             </div>
                         </div>
-
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
+                                <SfCheckBox id="posttosocial" Label="Post to Social" FloatLabelType="@FloatLabelType.Auto"
+                                            @bind-Checked="shortUrlRequest.PostToSocial"></SfCheckBox>
+                            </div>
+                        </div>
                         <div>
                             <SchedulesComponent schedules="shortUrlRequest.Schedules"></SchedulesComponent>
                         </div>

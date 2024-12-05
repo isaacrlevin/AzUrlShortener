@@ -72,20 +72,25 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
 
         public ShortUrlEntity(string longUrl, string endUrl)
         {
-            Initialize(longUrl, endUrl, string.Empty, string.Empty, null);
+            Initialize(longUrl, endUrl, string.Empty, string.Empty, true, null);
         }
 
         public ShortUrlEntity(string longUrl, string endUrl, Schedule[] schedules)
         {
-            Initialize(longUrl, endUrl, string.Empty, string.Empty, schedules);
+            Initialize(longUrl, endUrl, string.Empty, string.Empty, true, schedules);
         }
 
         public ShortUrlEntity(string longUrl, string endUrl, string title, string message, Schedule[] schedules)
         {
-            Initialize(longUrl, endUrl, title, message, schedules);
+            Initialize(longUrl, endUrl, title, message, true, schedules);
         }
 
-        private void Initialize(string longUrl, string endUrl, string title, string message, Schedule[] schedules)
+        public ShortUrlEntity(string longUrl, string endUrl, string title, string message, bool postToSocial, Schedule[] schedules)
+        {
+            Initialize(longUrl, endUrl, title, message, postToSocial, schedules);
+        }
+
+        private void Initialize(string longUrl, string endUrl, string title, string message, bool postToSocial, Schedule[] schedules)
         {
             PartitionKey = endUrl.First().ToString();
             RowKey = endUrl;
@@ -94,7 +99,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             Message = message;
             Clicks = 0;
             IsArchived = false;
-            Posted = false;
+            Posted = !postToSocial;
 
             if(schedules?.Length>0)
             {

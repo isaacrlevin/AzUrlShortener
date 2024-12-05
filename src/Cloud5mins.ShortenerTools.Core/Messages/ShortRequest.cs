@@ -12,6 +12,8 @@ namespace Cloud5mins.ShortenerTools.Core.Messages
 
         public string Message { get; set; }
 
+        public bool PostToSocial { get; set; } = true;
+
         public Schedule[] Schedules { get; set; }
     }
 }
