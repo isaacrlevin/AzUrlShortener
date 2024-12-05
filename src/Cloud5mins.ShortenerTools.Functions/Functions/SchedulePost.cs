@@ -26,15 +26,6 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         private TelemetryClient _telemetryClient;
         private readonly ILinkedInManager _linkedInManager;
 
-
-        public readonly string TwitterConsumerKey = Environment.GetEnvironmentVariable(nameof(TwitterConsumerKey));
-        public readonly string TwitterConsumerSecret = Environment.GetEnvironmentVariable(nameof(TwitterConsumerSecret)) ?? "";
-        public readonly string TwitterAccessToken = Environment.GetEnvironmentVariable(nameof(TwitterAccessToken)) ?? "";
-        public readonly string TwitterAccessSecret = Environment.GetEnvironmentVariable(nameof(TwitterAccessSecret)) ?? "";
-        public readonly string MastodonAccessToken = Environment.GetEnvironmentVariable(nameof(MastodonAccessToken)) ?? "";
-        public readonly string LinkedInAccessToken = Environment.GetEnvironmentVariable(nameof(LinkedInAccessToken)) ?? "";
-        public readonly bool PostSocials = Convert.ToBoolean(Environment.GetEnvironmentVariable(nameof(PostSocials)));
-
         public readonly string ShortenerBase = "http://isaacl.dev/";
 
         public SchedulePost(ILoggerFactory loggerFactory, ShortenerSettings settings, TelemetryClient telemetry, ILinkedInManager linkedInManager)
@@ -55,7 +46,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         }
 
         [Function("SchedulePostHttp")]
-        public async Task SchedulePostHttp([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/schedulepost")] HttpRequestData req, ExecutionContext context)
+        public async Task SchedulePostHttp([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/SchedulePost")] HttpRequestData req, ExecutionContext context)
         {
             if (Debugger.IsAttached)
             {
@@ -86,10 +77,10 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         private async Task Tweet(ShortUrlEntity linkInfo)
         {
             var client = new TwitterClient(
-                TwitterConsumerKey,
-                TwitterConsumerSecret,
-                TwitterAccessToken,
-                TwitterAccessSecret
+               _settings.TwitterConsumerKey,
+                _settings.TwitterConsumerSecret,
+                _settings.TwitterAccessToken,
+                _settings.TwitterAccessSecret
                 );
 
             var poster = new TweetsV2Poster(client);
@@ -111,7 +102,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
         private async Task PublishToMastodon(ShortUrlEntity linkInfo)
         {
-            var client = new MastodonClient("fosstodon.org", this.MastodonAccessToken);
+            var client = new MastodonClient("fosstodon.org", _settings.MastodonAccessToken);
             var status = await client.PublishStatus($"{linkInfo.Title} \n {linkInfo.Message} \n\n {ShortenerBase}{linkInfo.RowKey}", new Mastonet.Visibility?((Mastonet.Visibility)0), (string)null, (IEnumerable<string>)null, false, (string)null, new DateTime?(), (string)null, (PollParameters)null);
         }
 
@@ -121,7 +112,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                         .WithLogger(new DebugLoggerProvider().CreateLogger("FishyFlip"))
             .Build();
 
-            var session = await atProtocol.AuthenticateWithPasswordAsync("isaaclevin.com", "is04aac!");
+            var session = await atProtocol.AuthenticateWithPasswordAsync(_settings.BlueskyUserName, _settings.BlueskyPassword);
 
             if (session is null)
             {
@@ -217,10 +208,10 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
         private async Task PostToLinkedIn(ShortUrlEntity linkInfo)
         {
-            var user = await _linkedInManager.GetMyLinkedInUserProfile(LinkedInAccessToken);
+            var user = await _linkedInManager.GetMyLinkedInUserProfile(_settings.LinkedInAccessToken);
 
             var text = $"{linkInfo.Title} \n {linkInfo.Message} \n\n {ShortenerBase}{linkInfo.RowKey}";
-            var id = await _linkedInManager.PostShareTextAndLink(LinkedInAccessToken, user.Sub, text, $"{ShortenerBase}{linkInfo.RowKey}");
+            var id = await _linkedInManager.PostShareTextAndLink(_settings.LinkedInAccessToken, user.Sub, text, $"{ShortenerBase}{linkInfo.RowKey}");
         }
     }
 }
