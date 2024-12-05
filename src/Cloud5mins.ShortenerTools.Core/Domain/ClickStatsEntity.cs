@@ -114,6 +114,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             this.Host = parsed.LongUrl.DnsSafeHost;
             this.PartitionKey = this.ShortUrl;
             this.RowKey = this.Timestamp.Value.Ticks.ToString();
+            this.Datetime = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
         }
     }
 }

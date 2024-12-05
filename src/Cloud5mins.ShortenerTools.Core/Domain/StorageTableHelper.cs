@@ -148,6 +148,18 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             return results.ToList();
         }
 
+        public async Task<List<ClickStatsEntity>> GetAllStats()
+        {
+            var tableClient = GetStatsTable();
+            List<ClickStatsEntity> stats = new List<ClickStatsEntity>();
+            Pageable<ClickStatsEntity> queryResultsLINQ = tableClient.Query<ClickStatsEntity>();
+
+            foreach (ClickStatsEntity qEntity in queryResultsLINQ)
+            {
+                stats.AddRange(qEntity);
+            }
+            return stats;
+        }
 
         public async Task<ShortUrlEntity> ArchiveShortUrlEntity(ShortUrlEntity urlEntity)
         {

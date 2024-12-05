@@ -72,7 +72,7 @@ namespace Cloud5mins.ShortenerTools.Functions
                     var userAgent = string.Empty;
                     if (req.Headers.TryGetValues("User-Agent", out var userAgentValues))
                     {
-                        userAgent = userAgentValues.FirstOrDefault();
+                        userAgent = string.Join(" ", userAgentValues);
                         _logger.LogInformation($"User-Agent: {userAgent}");
 
                     }
