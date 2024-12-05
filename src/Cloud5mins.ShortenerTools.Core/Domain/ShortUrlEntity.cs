@@ -32,7 +32,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
 
         public int Clicks { get; set; }
 
-        public bool? IsArchived { get; set; }
+        public bool IsArchived { get; set; } = false;
 
         public bool Posted { get; set; }
         public string SchedulesPropertyRaw { get; set; }

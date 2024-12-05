@@ -1,4 +1,6 @@
 using Cloud5mins.ShortenerTools.Core.Domain;
+using Cloud5mins.ShortenerTools.Core.Domain.Socials.LinkedIn.Models;
+using LinkedIn;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +31,10 @@ namespace Cloud5mins.ShortenerTools
                         configuration.Bind(shortenerSettings);
                         return configuration;
                     });
+
+                    services.AddHttpClient();
+                    services.AddSingleton<ILinkedInManager, LinkedInManager>();
+                    
 
                     // Add our configuration class
                     services.AddSingleton(options => { return shortenerSettings; });

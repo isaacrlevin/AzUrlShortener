@@ -50,33 +50,14 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
         public async Task<List<ShortUrlEntity>> GetAllShortUrlEntities()
         {
             var tableClient = GetUrlsTable();
+            List<ShortUrlEntity> lstShortUrl = new List<ShortUrlEntity>();
+            Pageable<ShortUrlEntity> queryResultsLINQ = tableClient.Query<ShortUrlEntity>(ent => !ent.IsArchived && ent.RowKey != "KEY");
 
-            var lstShortUrl = new List<ShortUrlEntity>();
-            string continuationToken = null;
-            bool moreResultsAvailable = true;
-            while (moreResultsAvailable)
+            foreach (ShortUrlEntity qEntity in queryResultsLINQ)
             {
-                Page<ShortUrlEntity> page = tableClient
-                    .Query<ShortUrlEntity>()
-                    .AsPages(continuationToken, pageSizeHint: 10)
-                    .FirstOrDefault(); // Note: Since the pageSizeHint only limits the number of results in a single page, we explicitly only enumerate the first page.
-
-                if (page == null)
-                    break;
-
-                // Get the continuation token from the page.
-                // Note: This value can be stored so that the next page query can be executed later.
-                continuationToken = page.ContinuationToken;
-
-                IReadOnlyList<ShortUrlEntity> pageResults = page.Values;
-                moreResultsAvailable = continuationToken != null;
-
-                // Print out the results for this page.
-                foreach (ShortUrlEntity result in pageResults)
-                {
-                    lstShortUrl.AddRange(result);
-                }
+                lstShortUrl.AddRange(qEntity);
             }
+
             return lstShortUrl;
         }
 
@@ -154,6 +135,8 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             originalUrl.Url = urlEntity.Url;
             originalUrl.Title = urlEntity.Title;
             originalUrl.Message = urlEntity.Message;
+            originalUrl.Posted = urlEntity.Posted;
+
             originalUrl.SchedulesPropertyRaw = JsonSerializer.Serialize<List<Schedule>>(urlEntity.Schedules);
 
             return await SaveShortUrlEntity(originalUrl);
