@@ -65,10 +65,10 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
             if (item != null)
             {
-                //await Tweet(item);
-                //await PostToBlueSky(item);
-                //await PostToLinkedIn(item);
-                //await PublishToMastodon(item);
+                await Tweet(item);
+                await PostToBlueSky(item);
+                await PostToLinkedIn(item);
+                await PublishToMastodon(item);
                 item.Posted = true;
                 var result = await stgHelper.UpdateShortUrlEntity(item);
             }
