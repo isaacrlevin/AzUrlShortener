@@ -145,7 +145,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
         {
             var tableClient = GetStatsTable();
             Pageable<ClickStatsEntity> results = tableClient.Query<ClickStatsEntity>(ent => ent.PartitionKey == vanity);
-            return results.ToList();
+            return results.OrderByDescending(a => a.Date).ToList();
         }
 
         public async Task<List<ClickStatsEntity>> GetAllStats()
@@ -158,7 +158,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             {
                 stats.AddRange(qEntity);
             }
-            return stats;
+            return stats.OrderByDescending(a=> a.Date).ToList();
         }
 
         public async Task<ShortUrlEntity> ArchiveShortUrlEntity(ShortUrlEntity urlEntity)

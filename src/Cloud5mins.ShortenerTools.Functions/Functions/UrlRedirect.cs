@@ -47,6 +47,15 @@ namespace Cloud5mins.ShortenerTools.Functions
                 return resp;
             }
 
+            if (shortUrl.Contains("."))
+            {
+                _logger.LogInformation($"Request for {shortUrl}.");
+                var resp = req.CreateResponse(HttpStatusCode.OK);
+                resp.WriteString("User-agent: Twitterbot\nDisallow:\n\nUser-agent: *\nDisallow: /",
+                    System.Text.Encoding.UTF8);
+                return resp;
+            }
+
             if (!string.IsNullOrWhiteSpace(shortUrl))
             {
                 redirectUrl = _settings.DefaultRedirectUrl ?? redirectUrl;

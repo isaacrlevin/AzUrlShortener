@@ -4,6 +4,7 @@ using System.Web;
 using System;
 using Azure.Data.Tables;
 using Azure;
+using System.Runtime.Serialization;
 
 namespace Cloud5mins.ShortenerTools.Core.Domain
 {
@@ -11,6 +12,9 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
     {
         //public string Id { get; set; }
         public string Datetime { get; set; }
+
+        [IgnoreDataMember]
+        public DateTime Date  => DateTime.Parse(Datetime).ToLocalTime();
 
         public string Page { get; set; }
         public string ShortUrl { get; set; }

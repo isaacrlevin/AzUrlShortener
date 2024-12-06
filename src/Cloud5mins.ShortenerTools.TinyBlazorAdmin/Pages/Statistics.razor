@@ -16,7 +16,7 @@
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 
-@attribute [Authorize(Roles = "admin")]
+@* @attribute [Authorize(Roles = "admin")] *@
 
 <h1>@subTitle</h1>
 <a href="/UrlManager/"> &lt;&lt; Back</a>
@@ -35,7 +35,7 @@
                 <ChartEvents />
                 <ChartArea><ChartAreaBorder Width="1"></ChartAreaBorder></ChartArea>
                 <ChartPrimaryXAxis ValueType="Syncfusion.Blazor.Charts.ValueType.DateTime"
-                                   LabelFormat="y/M/d"
+                                   LabelFormat="MM/dd/yyy"
                                    EdgeLabelPlacement="EdgeLabelPlacement.Shift" RangePadding="ChartRangePadding.Auto">
                     <ChartAxisMajorGridLines Width="1"></ChartAxisMajorGridLines>
                 </ChartPrimaryXAxis>
@@ -47,7 +47,7 @@
                 <ChartTooltipSettings Enable="true"></ChartTooltipSettings>
 
                 <ChartSeriesCollection>
-                    <ChartSeries DataSource="@clickStatsEntities.GroupBy(s => DateTime.Parse(s.Datetime).Date).Select(stat => new { DateClicked = stat.Key.ToString("yyyy-MM-dd"), Count = stat.Count() }).OrderBy(s => DateTime.Parse(s.DateClicked).Date).ToList()"
+                    <ChartSeries DataSource="@clickStatsEntities.GroupBy(s => s.Date.Date).Select(stat => new { DateClicked = stat.Key, Count = stat.Count() }).ToList()"
                                  Name="Click(s) by Day"
                                  XName="DateClicked"
                                  YName="Count"
@@ -98,9 +98,9 @@
                         </HeaderTemplate>
                         <ContentTemplate>
                             <SfGrid DataSource="@clickStatsEntities" id="grdStats" AllowPaging="true" AllowSorting="true">
-                                <GridPageSettings PageSize="15"></GridPageSettings>
+                                <GridPageSettings PageSize="50"></GridPageSettings>
                                 <GridColumns>
-                                    <GridColumn Field=@nameof(ClickStatsEntity.Datetime) HeaderText="Timestamp" Format="d" Type="ColumnType.Date" TextAlign="TextAlign.Right" Width="130"></GridColumn>
+                                    <GridColumn Field=@nameof(ClickStatsEntity.Date) HeaderText="Timestamp" Format="MM/dd/yyyy hh:mm:ss tt" Type="ColumnType.Date" TextAlign="TextAlign.Right" Width="200"></GridColumn>
                                     <GridColumn Field=@nameof(ClickStatsEntity.Page) HeaderText="Page"></GridColumn>
                                     <GridColumn Field=@nameof(ClickStatsEntity.ShortUrl) HeaderText="ShortUrl"></GridColumn>
                                     <GridColumn Field=@nameof(ClickStatsEntity.BrowserWithVersion) HeaderText="Browser"></GridColumn>

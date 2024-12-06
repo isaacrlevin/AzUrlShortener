@@ -26,7 +26,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         private TelemetryClient _telemetryClient;
         private readonly ILinkedInManager _linkedInManager;
 
-        public readonly string ShortenerBase = "http://isaacl.dev/";
+        public readonly string ShortenerBase = "https://isaacl.dev/";
 
         public SchedulePost(ILoggerFactory loggerFactory, ShortenerSettings settings, TelemetryClient telemetry, ILinkedInManager linkedInManager)
         {
