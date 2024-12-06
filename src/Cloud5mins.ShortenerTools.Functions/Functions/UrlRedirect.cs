@@ -86,6 +86,15 @@ namespace Cloud5mins.ShortenerTools.Functions
 
                     }
 
+                    if (userAgent.ToLower().Contains("bot"))
+                    {
+                        _logger.LogInformation($"Request for {shortUrl}.");
+                        var resp = req.CreateResponse(HttpStatusCode.OK);
+                        resp.WriteString("User-agent: Twitterbot\nDisallow:\n\nUser-agent: *\nDisallow: /",
+                            System.Text.Encoding.UTF8);
+                        return resp;
+                    }
+
                     AnalyticsEntry parsed = new AnalyticsEntry
                     {
                         Agent = userAgent,
