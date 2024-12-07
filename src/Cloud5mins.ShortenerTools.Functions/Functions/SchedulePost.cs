@@ -13,7 +13,9 @@ using Microsoft.Extensions.Logging.Debug;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Policy;
 using System.Text;
+using System.Text.Encodings.Web;
 using Tweetinvi;
 using Tweetinvi.Core.Web;
 
@@ -128,12 +130,10 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             Facet? facet = null;
             FishyFlip.Models.Image? image = null;
 
-            //check to see if linkInfo.Url is a valid link
-
-
             try
             {
-                var card = await client.GetFromJsonAsync<BlueSkyCard>(linkInfo.Url);
+                string encodedUrl = HtmlEncoder.Default.Encode($"{ ShortenerBase}{ linkInfo.RowKey}");
+                var card = await client.GetFromJsonAsync<BlueSkyCard>($"https://cardyb.bsky.app/v1/extract?url={encodedUrl}");
 
                 if (card != null)
                 {
@@ -159,8 +159,8 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                         {
                             image = success.Blob.ToImage();
 
-                            int promptStart = postTemplate.IndexOf(linkInfo.Url, StringComparison.InvariantCulture);
-                            int promptEnd = promptStart + Encoding.Default.GetBytes(linkInfo.Url).Length;
+                            int promptStart = postTemplate.IndexOf($"{ShortenerBase}{linkInfo.RowKey}", StringComparison.InvariantCulture);
+                            int promptEnd = promptStart + Encoding.Default.GetBytes($"{ShortenerBase}{linkInfo.RowKey}").Length;
                             var index = new FacetIndex(promptStart, promptEnd);
                             var link = FacetFeature.CreateLink(card.url);
                             facet = new Facet(index, link);
@@ -178,7 +178,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             }
             if (facet != null && image != null)
             {
-                var postResult = await atProtocol.Repo.CreatePostAsync(postTemplate, new[] { facet }, new ImagesEmbed(image, $"Link to {linkInfo.Url}"));
+                var postResult = await atProtocol.Repo.CreatePostAsync(postTemplate, new[] { facet }, new ImagesEmbed(image, $"Link to {ShortenerBase}{linkInfo.RowKey}"));
 
                 postResult.Switch(
                     success =>
