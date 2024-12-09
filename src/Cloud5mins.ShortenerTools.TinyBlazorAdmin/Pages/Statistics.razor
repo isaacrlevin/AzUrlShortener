@@ -15,8 +15,9 @@
 @inject IJSRuntime JSRuntime
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
+@inject ILogger<Statistics> Logger
 
-@* @attribute [Authorize(Roles = "admin")] *@
+@attribute [Authorize(Roles = "admin")]
 
 <h1>@subTitle</h1>
 <a href="/UrlManager/"> &lt;&lt; Back</a>
@@ -169,7 +170,7 @@
         }
         catch (System.Exception ex)
         {
-            Console.WriteLine(ex.ToString());
+            Logger.LogError(ex.ToString());
         }
         return null;
     }

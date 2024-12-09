@@ -10,7 +10,7 @@
 @inject HttpClient Http
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
-
+@inject ILogger<UrlManager> Logger
 @attribute [Authorize(Roles = "admin")]
 
 <PageTitle>Url Manager</PageTitle>
@@ -226,7 +226,7 @@ else
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.ToString());
+            Logger.LogError(ex.ToString());
         }
     }
 
@@ -248,7 +248,7 @@ else
         }
         catch (System.Exception ex)
         {
-            Console.WriteLine(ex.ToString());
+            Logger.LogError(ex.ToString());
         }
     }
 

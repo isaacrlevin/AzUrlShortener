@@ -13,7 +13,6 @@ using Microsoft.Extensions.Logging.Debug;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Policy;
 using System.Text;
 using System.Text.Encodings.Web;
 using Tweetinvi;
@@ -118,7 +117,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
             if (session is null)
             {
-                Console.WriteLine("Failed to authenticate.");
+                _logger.LogError("Failed to authenticate."); ;
                 return;
             }
 
@@ -132,7 +131,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
             try
             {
-                string encodedUrl = HtmlEncoder.Default.Encode($"{ ShortenerBase}{ linkInfo.RowKey}");
+                string encodedUrl = HtmlEncoder.Default.Encode($"{ShortenerBase}{linkInfo.RowKey}");
                 var card = await client.GetFromJsonAsync<BlueSkyCard>($"https://cardyb.bsky.app/v1/extract?url={encodedUrl}");
 
                 if (card != null)
@@ -167,14 +166,14 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                         },
                         async error =>
                         {
-                            Console.WriteLine($"Error: {error.StatusCode} {error.Detail}");
+                            _logger.LogError($"Error: {error.StatusCode} {error.Detail}");
                         }
                         );
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                _logger.LogError($"Error: {ex.Message}");
             }
             if (facet != null && image != null)
             {
@@ -183,11 +182,11 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                 postResult.Switch(
                     success =>
                     {
-                        Console.WriteLine($"Post: {success.Uri} {success.Cid}");
+                        _logger.LogInformation($"Post: {success.Uri} {success.Cid}");
                     },
                     error =>
                     {
-                        Console.WriteLine($"Error: {error.StatusCode} {error.Detail}");
+                        _logger.LogError($"Error: {error.StatusCode} {error.Detail}");
                     });
             }
             else
@@ -196,11 +195,11 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                 postResult.Switch(
                     success =>
                     {
-                        Console.WriteLine($"Post: {success.Uri} {success.Cid}");
+                        _logger.LogInformation($"Post: {success.Uri} {success.Cid}");
                     },
                     error =>
                     {
-                        Console.WriteLine($"Error: {error.StatusCode} {error.Detail}");
+                        _logger.LogError($"Error: {error.StatusCode} {error.Detail}");
                     }
                     );
             }
