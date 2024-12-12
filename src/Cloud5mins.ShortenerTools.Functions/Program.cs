@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OllamaSharp;
 using OpenAI;
+using System.Diagnostics;
 using static System.Environment;
 
 var builder = FunctionsApplication.CreateBuilder(args);
@@ -20,7 +21,7 @@ builder.AddServiceDefaults();
 
 ShortenerSettings shortenerSettings = new ShortenerSettings();
 
-if (!builder.Environment.IsDevelopment())
+if (!Debugger.IsAttached)
 {
     builder.Services.AddApplicationInsightsTelemetryWorkerService();
     builder.Services.ConfigureFunctionsApplicationInsights();
