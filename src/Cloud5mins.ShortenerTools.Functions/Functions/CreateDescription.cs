@@ -24,7 +24,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
         [Function("CreateDescription")]
         public async Task<HttpResponseData> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "post", Route = "api/CreateDescription")] HttpRequestData req)
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "api/CreateDescription")] HttpRequestData req)
         {
             var result = string.Empty;
             var url = string.Empty;
