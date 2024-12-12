@@ -17,14 +17,18 @@ var builder = FunctionsApplication.CreateBuilder(args);
 
 builder.ConfigureFunctionsWebApplication();
 
-builder.AddServiceDefaults();
 
 ShortenerSettings shortenerSettings = new ShortenerSettings();
 
 if (!Debugger.IsAttached)
 {
-    builder.Services.AddApplicationInsightsTelemetryWorkerService();
-    builder.Services.ConfigureFunctionsApplicationInsights();
+    builder.Services
+        .AddApplicationInsightsTelemetryWorkerService()
+        .ConfigureFunctionsApplicationInsights();
+}
+else
+{
+    builder.AddServiceDefaults();
 }
 
 builder.Configuration.Bind(shortenerSettings);
