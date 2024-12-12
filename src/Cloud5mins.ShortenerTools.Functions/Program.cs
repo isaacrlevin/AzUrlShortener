@@ -2,57 +2,46 @@ using Cloud5mins.ShortenerTools.Core.Domain;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials.LinkedIn.Models;
 using LinkedIn;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Builder;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.Linq;
+using OllamaSharp;
+using OpenAI;
+using static System.Environment;
 
-namespace Cloud5mins.ShortenerTools
+var builder = FunctionsApplication.CreateBuilder(args);
+
+builder.ConfigureFunctionsWebApplication();
+
+builder.AddServiceDefaults();
+
+ShortenerSettings shortenerSettings = new ShortenerSettings();
+
+if (!builder.Environment.IsDevelopment())
 {
-    public class Program
-    {
-        public static void Main()
-        {
-            ShortenerSettings shortenerSettings = null;
-
-            var host = new HostBuilder()
-                .ConfigureFunctionsWebApplication()
-                .ConfigureServices((context, services) =>
-                {
-                    services.AddApplicationInsightsTelemetryWorkerService();
-                    services.ConfigureFunctionsApplicationInsights();
-
-                    // Add our global configuration instance
-                    services.AddSingleton(options =>
-                    {
-                        var configuration = context.Configuration;
-                        shortenerSettings = new ShortenerSettings();
-                        configuration.Bind(shortenerSettings);
-                        return configuration;
-                    });
-
-                    services.AddHttpClient();
-                    services.AddSingleton<ILinkedInManager, LinkedInManager>();
-                    
-
-                    // Add our configuration class
-                    services.AddSingleton(options => { return shortenerSettings; });
-                }).ConfigureLogging(logging =>
-                {
-                    logging.Services.Configure<LoggerFilterOptions>(options =>
-                    {
-                        LoggerFilterRule defaultRule = options.Rules.FirstOrDefault(rule => rule.ProviderName
-                            == "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider");
-                        if (defaultRule is not null)
-                        {
-                            options.Rules.Remove(defaultRule);
-                        }
-                    });
-                })
-                .Build();
-
-            host.Run();
-        }
-    }
+    builder.Services.AddApplicationInsightsTelemetryWorkerService();
+    builder.Services.ConfigureFunctionsApplicationInsights();
 }
+
+builder.Configuration.Bind(shortenerSettings);
+
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<ILinkedInManager, LinkedInManager>();
+
+builder.Logging.Services.Configure<LoggerFilterOptions>(options =>
+{
+    LoggerFilterRule defaultRule = options.Rules.FirstOrDefault(rule => rule.ProviderName == "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider");
+
+    if (defaultRule is not null)
+    {
+        options.Rules.Remove(defaultRule);
+    }
+});
+
+builder.Services.AddSingleton(options => { return shortenerSettings; });
+
+
+builder.Build().Run();
