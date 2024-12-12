@@ -2,7 +2,9 @@ using System.Diagnostics;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-var chat = Debugger.IsAttached
+bool useOllama = true;
+
+var chat = useOllama
     ? builder.AddOllama("ollama")
            .WithDataVolume()
            .WithContainerRuntimeArgs("--gpus=all")
@@ -15,14 +17,15 @@ var storage = builder.AddAzureStorage("storage")
 
 var table = storage.AddTables("tables");
 
-
 var functions = builder.AddAzureFunctionsProject<Projects.Cloud5mins_ShortenerTools_Functions>("cloud5mins-shortenertools-functions")
     .WithExternalHttpEndpoints()
     .WithHostStorage(storage)
     .WithReference(table)
+    .WithEnvironment("IN_ASPIRE", "true")
+    .WithEnvironment("USE_OLLAMA", useOllama.ToString())
     .WithReference(chat);
 
-if (Debugger.IsAttached)
+if (useOllama)
 {
     functions
     .WaitFor(chat);
@@ -40,8 +43,4 @@ _ = builder
     .WithAppResource(web)
     .WithApiResource(functions);
 
-
-
 builder.Build().Run();
-
-
