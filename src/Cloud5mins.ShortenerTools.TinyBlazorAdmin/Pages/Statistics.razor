@@ -2,22 +2,12 @@
 @page "/statistics/{vanity}"
 
 
-@using Cloud5mins.ShortenerTools.Core.Messages;
-@using Cloud5mins.ShortenerTools.Core.Domain
-@using Syncfusion.Blazor.Charts
-@using Syncfusion.Blazor.Spinner
-@using Syncfusion.Blazor.Navigations
-@using Syncfusion.Blazor.Grids
-@using Microsoft.AspNetCore.Authorization
-@using System.Collections.ObjectModel
-@using System.Text.Json
-@using System.Net
 @inject IJSRuntime JSRuntime
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 @inject ILogger<Statistics> Logger
 
-@attribute [Authorize(Roles = "admin")]
+ @attribute [Authorize(Roles = "admin")]
 
 <h1>@subTitle</h1>
 <a href="/UrlManager/"> &lt;&lt; Back</a>

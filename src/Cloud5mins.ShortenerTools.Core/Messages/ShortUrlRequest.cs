@@ -26,6 +26,7 @@ namespace Cloud5mins.ShortenerTools.Core.Messages
         }
 
         [Required]
+        [Url]
         public string Url { get; set; }
     }
 }
