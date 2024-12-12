@@ -18,8 +18,6 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
 
         public string ShortUrl { get; set; }
 
-        public int Clicks { get; set; }
-
         public bool IsArchived { get; set; } = false;
 
         public bool Posted { get; set; }
@@ -59,7 +57,6 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             Url = longUrl;
             Title = title;
             Message = message;
-            Clicks = 0;
             IsArchived = false;
             Posted = !postToSocial;
         }

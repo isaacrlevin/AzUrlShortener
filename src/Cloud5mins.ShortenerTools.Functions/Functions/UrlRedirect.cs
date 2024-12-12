@@ -19,14 +19,12 @@ namespace Cloud5mins.ShortenerTools.Functions
     {
         private readonly ILogger _logger;
         private readonly ShortenerSettings _settings;
-        private TelemetryClient _telemetryClient;
 
 
-        public UrlRedirect(ILoggerFactory loggerFactory, ShortenerSettings settings, TelemetryClient telemetry)
+        public UrlRedirect(ILoggerFactory loggerFactory, ShortenerSettings settings)
         {
             _logger = loggerFactory.CreateLogger<UrlRedirect>();
             _settings = settings;
-            _telemetryClient = telemetry;
         }
 
         [Function("UrlRedirect")]
@@ -51,7 +49,7 @@ namespace Cloud5mins.ShortenerTools.Functions
             {
                 _logger.LogInformation($"Request for {shortUrl}.");
                 var resp = req.CreateResponse(HttpStatusCode.OK);
-                resp.WriteString("User-agent: Twitterbot\nDisallow:\n\nUser-agent: *\nDisallow: /",
+                await resp.WriteStringAsync("User-agent: Twitterbot\nDisallow:\n\nUser-agent: *\nDisallow: /",
                     System.Text.Encoding.UTF8);
                 return resp;
             }
@@ -68,7 +66,6 @@ namespace Cloud5mins.ShortenerTools.Functions
                 if (newUrl != null)
                 {
                     _logger.LogInformation($"Found it: {newUrl.Url}");
-                    newUrl.Clicks++;
 
                     var referrer = string.Empty;
                     
@@ -106,13 +103,12 @@ namespace Cloud5mins.ShortenerTools.Functions
 
                     var page = parsed.LongUrl.AsPage(HttpUtility.ParseQueryString);
 
-                    _telemetryClient.TrackPageView(page);
                     _logger.LogInformation($"Tracked page view {page}");
 
                     var click = new ClickStatsEntity(parsed, page);
 
                     await stgHelper.SaveClickStatsEntity(click);
-                    await stgHelper.SaveShortUrlEntity(newUrl);
+
                     redirectUrl = WebUtility.UrlDecode(newUrl.Url);
                 }
             }

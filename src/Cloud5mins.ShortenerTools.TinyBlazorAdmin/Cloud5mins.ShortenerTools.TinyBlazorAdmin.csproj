@@ -9,6 +9,7 @@
 	<ItemGroup>
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 		<PackageReference Include="Syncfusion.Blazor.Calendars" Version="25.1.40" />
+		<PackageReference Include="Syncfusion.Blazor.Inputs" Version="25.1.40" />
 		<PackageReference Include="Syncfusion.Blazor.Charts" Version="25.1.40" />
 		<PackageReference Include="Syncfusion.Blazor.Grid" Version="25.1.40" />
 		<PackageReference Include="Syncfusion.Blazor.Spinner" Version="25.1.40" />

@@ -5,11 +5,12 @@ using FishyFlip;
 using FishyFlip.Models;
 using Mastonet;
 using Mastonet.Entities;
-using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -24,16 +25,14 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
     {
         private readonly ILogger _logger;
         private readonly ShortenerSettings _settings;
-        private TelemetryClient _telemetryClient;
         private readonly ILinkedInManager _linkedInManager;
 
         public readonly string ShortenerBase = "https://isaacl.dev/";
 
-        public SchedulePost(ILoggerFactory loggerFactory, ShortenerSettings settings, TelemetryClient telemetry, ILinkedInManager linkedInManager)
+        public SchedulePost(ILoggerFactory loggerFactory, ShortenerSettings settings, ILinkedInManager linkedInManager)
         {
             _logger = loggerFactory.CreateLogger<UrlRedirect>();
             _settings = settings;
-            _telemetryClient = telemetry;
             _linkedInManager = linkedInManager;
         }
 
@@ -121,17 +120,19 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                 return;
             }
 
-            string postTemplate = $"{linkInfo.Title} \n {linkInfo.Message} \n\n {ShortenerBase}{linkInfo.RowKey}";
+            string shortUrl = $"{ShortenerBase}{linkInfo.RowKey}";
+
+            string postTemplate = $"{linkInfo.Title} \n {linkInfo.Message} \n\n {shortUrl}";
 
 
             HttpClient client = new HttpClient();
 
-            Facet? facet = null;
+            List<Facet> facets = new List<Facet>();
             FishyFlip.Models.Image? image = null;
 
             try
             {
-                string encodedUrl = HtmlEncoder.Default.Encode($"{ShortenerBase}{linkInfo.RowKey}");
+                string encodedUrl = HtmlEncoder.Default.Encode(shortUrl);
                 var card = await client.GetFromJsonAsync<BlueSkyCard>($"https://cardyb.bsky.app/v1/extract?url={encodedUrl}");
 
                 if (card != null)
@@ -144,54 +145,62 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                     var fileName = card.title;
 
                     var imageBytes = await client.GetByteArrayAsync(uri);
-                    await File.WriteAllBytesAsync(Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"), imageBytes);
 
-                    var stream = File.OpenRead(Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"));
-                    var content = new StreamContent(stream);
-                    content.Headers.ContentLength = stream.Length;
-
-                    content.Headers.ContentType = new MediaTypeHeaderValue("image/jpg");
-                    var blobResult = await atProtocol.Repo.UploadBlobAsync(content);
-
-                    await blobResult.SwitchAsync(
-                        async success =>
+                    if (imageBytes.Length != 0)
+                    {
+                        if (imageBytes.Length > 999999)
                         {
-                            image = success.Blob.ToImage();
-
-                            int promptStart = postTemplate.IndexOf($"{ShortenerBase}{linkInfo.RowKey}", StringComparison.InvariantCulture);
-                            int promptEnd = promptStart + Encoding.Default.GetBytes($"{ShortenerBase}{linkInfo.RowKey}").Length;
-                            var index = new FacetIndex(promptStart, promptEnd);
-                            var link = FacetFeature.CreateLink(card.url);
-                            facet = new Facet(index, link);
-                        },
-                        async error =>
-                        {
-                            _logger.LogError($"Error: {error.StatusCode} {error.Detail}");
+                            imageBytes = await ScaleImage(imageBytes);
                         }
-                        );
+
+                        await File.WriteAllBytesAsync(Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"), imageBytes);
+
+                        var stream = File.OpenRead(Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"));
+                        var content = new StreamContent(stream);
+                        content.Headers.ContentLength = stream.Length;
+
+                        content.Headers.ContentType = new MediaTypeHeaderValue("image/jpg");
+                        var blobResult = await atProtocol.Repo.UploadBlobAsync(content);
+
+                        await blobResult.SwitchAsync(
+                            async success =>
+                            {
+                                image = success.Blob.ToImage();
+                            },
+                            async error =>
+                            {
+                                _logger.LogError($"Error: {error.StatusCode} {error.Detail}");
+                            }
+                            );
+                    }
+
+                    int promptStart = postTemplate.IndexOf($"{shortUrl}", StringComparison.InvariantCulture);
+                    int promptEnd = promptStart + Encoding.Default.GetBytes($"{shortUrl}").Length;
+                    var index = new FacetIndex(promptStart, promptEnd);
+                    var link = FacetFeature.CreateLink(card.url);
+                    facets.Add(new Facet(index, link));
+
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Error: {ex.Message}");
             }
-            if (facet != null && image != null)
-            {
-                var postResult = await atProtocol.Repo.CreatePostAsync(postTemplate, new[] { facet }, new ImagesEmbed(image, $"Link to {ShortenerBase}{linkInfo.RowKey}"));
 
-                postResult.Switch(
-                    success =>
-                    {
-                        _logger.LogInformation($"Post: {success.Uri} {success.Cid}");
-                    },
-                    error =>
-                    {
-                        _logger.LogError($"Error: {error.StatusCode} {error.Detail}");
-                    });
+
+            Result<CreatePostResponse> postResult = null;
+
+            if (image != null)
+            {
+                postResult = await atProtocol.Repo.CreatePostAsync(postTemplate, facets.ToArray(), new ImagesEmbed(image, $"{shortUrl}"));
             }
             else
             {
-                var postResult = await atProtocol.Repo.CreatePostAsync(postTemplate);
+                postResult = await atProtocol.Repo.CreatePostAsync(postTemplate, facets.ToArray());
+            }
+
+            if (postResult != null)
+            {
                 postResult.Switch(
                     success =>
                     {
@@ -211,6 +220,20 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
             var text = $"{linkInfo.Title} \n {linkInfo.Message} \n\n {ShortenerBase}{linkInfo.RowKey}";
             var id = await _linkedInManager.PostShareTextAndLink(_settings.LinkedInAccessToken, user.Sub, text, $"{ShortenerBase}{linkInfo.RowKey}");
+        }
+
+        public async Task<byte[]> ScaleImage(byte[] imageBytes, int maxSizeInBytes = 999999)
+        {
+            using var image = SixLabors.ImageSharp.Image.Load(imageBytes);
+            var ratio = Math.Sqrt((double)maxSizeInBytes / imageBytes.Length);
+            var newWidth = (int)(image.Width * ratio);
+            var newHeight = (int)(image.Height * ratio);
+
+            image.Mutate(x => x.Resize(newWidth, newHeight));
+
+            using var ms = new MemoryStream();
+            await image.SaveAsJpegAsync(ms);
+            return ms.ToArray();
         }
     }
 }

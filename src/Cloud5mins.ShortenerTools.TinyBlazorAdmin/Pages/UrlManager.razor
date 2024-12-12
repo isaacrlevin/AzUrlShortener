@@ -48,11 +48,10 @@ else
             </GridColumn>
             <GridColumn Field=@nameof(ShortUrlEntity.Title) HeaderText="Title"></GridColumn>
             <GridColumn Field=@nameof(ShortUrlEntity.Url) HeaderText="Url"></GridColumn>
-            <GridColumn Width="100" TextAlign="TextAlign.Right" Field=@nameof(ShortUrlEntity.Clicks) HeaderText="Clicks">
+            <GridColumn Width="100" TextAlign="TextAlign.Right" HeaderText="Clicks">
                 <Template>
                     @{
                         var url = (context as ShortUrlEntity);
-                        <span>@url.Clicks</span>
                         <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() =>
                         NavigateToStats(url.RowKey))">
                             📊
