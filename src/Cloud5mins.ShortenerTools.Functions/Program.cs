@@ -44,5 +44,27 @@ builder.Logging.Services.Configure<LoggerFilterOptions>(options =>
 
 builder.Services.AddSingleton(options => { return shortenerSettings; });
 
+if (Debugger.IsAttached)
+{
+    builder.AddKeyedOllamaSharpChatClient("chat");
+    var sp = builder.Services.BuildServiceProvider();
+
+    builder.Services.AddChatClient(sp.GetRequiredKeyedService<IChatClient>("chat"))
+              .UseFunctionInvocation()
+              .UseOpenTelemetry(configure: t => t.EnableSensitiveData = true)
+              //.UseLogging()
+              .Build();
+}
+else
+{
+    builder.AddKeyedAzureOpenAIClient("chat");
+    var sp = builder.Services.BuildServiceProvider();
+
+    builder.Services.AddChatClient(sp.GetRequiredKeyedService<OpenAIClient>("chat").AsChatClient("gpt-4o-mini"))
+              .UseFunctionInvocation()
+              .UseOpenTelemetry(configure: t => t.EnableSensitiveData = true)
+              //.UseLogging()
+              .Build();
+}
 
 builder.Build().Run();

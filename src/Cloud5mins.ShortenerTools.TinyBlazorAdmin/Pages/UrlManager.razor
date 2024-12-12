@@ -1,17 +1,12 @@
 @page "/urlmanager"
 
-@using Cloud5mins.ShortenerTools.Core.Domain
-@using Cloud5mins.ShortenerTools.Core.Messages;
-@using Microsoft.AspNetCore.Authorization
-@using Syncfusion.Blazor.Grids
-@using Syncfusion.Blazor.Buttons
-@using Syncfusion.Blazor.Inputs
-@using System.Net
+
 @inject HttpClient Http
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject ILogger<UrlManager> Logger
-@attribute [Authorize(Roles = "admin")]
+
+@attribute [Authorize(Roles = "admin")] 
 
 <PageTitle>Url Manager</PageTitle>
 
@@ -48,7 +43,7 @@ else
             </GridColumn>
             <GridColumn Field=@nameof(ShortUrlEntity.Title) HeaderText="Title"></GridColumn>
             <GridColumn Field=@nameof(ShortUrlEntity.Url) HeaderText="Url"></GridColumn>
-            <GridColumn Width="100" TextAlign="TextAlign.Right" HeaderText="Clicks">
+            <GridColumn Width="100" TextAlign="TextAlign.Right" HeaderText="Statistics">
                 <Template>
                     @{
                         var url = (context as ShortUrlEntity);
@@ -97,14 +92,23 @@ else
                         </div>
                         <div class="row">
                             <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
-                                <SfTextBox id="url" Placeholder="Url" FloatLabelType="@FloatLabelType.Auto"
-                                           @bind-Value="shortUrlRequest.Url"></SfTextBox>
+                                <SfTextBox id="url" Placeholder="Url" FloatLabelType="@FloatLabelType.Auto" Width="400px"
+                                           @bind-Value="shortUrlRequest.Url"></SfTextBox>  <button disabled="@IsUrlEmpty" type="button" class="btn" style="margin-top: 24px" @onclick=@Generate>
+                                    @if (isLoading)
+                                    {
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    }
+                                    else
+                                    {
+                                        <span class="magic-wand" aria-hidden="true"></span>
+                                    }
+                                </button>
                                 <ValidationMessage For="@(() => shortUrlRequest.Url)" />
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
-                                <SfTextBox id="message" Placeholder="Message" FloatLabelType="@FloatLabelType.Auto"
+                                <SfTextBox id="message" Placeholder="Message" Width="400px" FloatLabelType="@FloatLabelType.Auto" Multiline="true"
                                            @bind-Value="shortUrlRequest.Message"></SfTextBox>
                                 <ValidationMessage For="@(() => shortUrlRequest.Message)" />
                             </div>
@@ -161,7 +165,7 @@ else
                         <br />
                         <div>
                             <label for="edit-message">Message</label>
-                            <InputText id="edit-message" class="form-control" placeholder="Message" @bind-Value="editedUrl.Message" />
+                            <InputTextArea id="edit-message" class="form-control" placeholder="Message" @bind-Value="editedUrl.Message" />
                             <ValidationMessage For="@(() => editedUrl.Message)" />
                         </div>
                         <br />
@@ -186,6 +190,7 @@ else
 }
 
 @code {
+
     bool ShowCreatePopup = false;
     bool ShowEditPopup = false;
     private ListResponse urls = new ListResponse();
@@ -193,8 +198,9 @@ else
     ShortUrlEntity editedUrl;
     SfGrid<ShortUrlEntity> grdUrls;
     public List<ShortUrlEntity> gridData { get; set; }
+    private bool isLoading = false;
 
-
+    private bool IsUrlEmpty => string.IsNullOrEmpty(shortUrlRequest.Url);
     protected override async Task OnInitializedAsync()
     {
         await RefreshGrid();
@@ -242,12 +248,48 @@ else
         {
             await Http.PostAsJsonAsync<ShortUrlRequest>("/api/UrlCreate", shortUrlRequest);
             await UpdateUIList();
-            @* await grdUrls.ClearFilteringAsync();
-                await grdUrls.FilterByColumnAsync("RowKey", "equal", shortUrlRequest.Vanity); *@
         }
         catch (System.Exception ex)
         {
             Logger.LogError(ex.ToString());
+        }
+    }
+
+
+
+    private async Task Generate()
+    {
+        if (!string.IsNullOrEmpty(shortUrlRequest.Url))
+        {
+            isLoading = true;
+            try
+            {
+                using var response = await Http.PostAsJsonAsync<string>("/api/CreateDescription", shortUrlRequest.Url);
+                if (response.IsSuccessStatusCode)
+                {
+                    var message = await response.Content.ReadFromJsonAsync<string>();
+                    shortUrlRequest.Message = message.Replace("\"", string.Empty);
+                    isLoading = false;
+                }
+                else
+                {
+                    switch (response.StatusCode)
+                    {
+                        case HttpStatusCode.Unauthorized:
+                            NavigationManager.NavigateTo("/unauthorized");
+                            break;
+                        default:
+                            NavigationManager.NavigateTo("/404");
+                            break;
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                isLoading = false;
+                Logger.LogError(ex.ToString());
+            }
+            StateHasChanged();
         }
     }
 

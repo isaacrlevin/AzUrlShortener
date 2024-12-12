@@ -71,7 +71,7 @@
       "type": "func",
       "dependsOn": "build (functions)",
       "options": {
-        "cwd": "${workspaceFolder}/src/bin/Debug/net6.0"
+        "cwd": "${workspaceFolder}/src"
       },
       "command": "host start",
       "isBackground": true,
@@ -83,7 +83,7 @@
         "type": "process",
         "args": [
             "build",
-            "${workspaceFolder}/src/shortenerTools.csproj",
+            "${workspaceFolder}/src/Cloud5mins.ShortenerTools.TinyBlazorAdmin/Cloud5mins.ShortenerTools.TinyBlazorAdmin.csproj",
             "/property:GenerateFullPaths=true",
             "/consoleloggerparameters:NoSummary"
         ],
@@ -95,7 +95,7 @@
         "type": "process",
         "args": [
             "publish",
-            "${workspaceFolder}/src/shortenerTools.csproj",
+            "${workspaceFolder}/src/Cloud5mins.ShortenerTools.TinyBlazorAdmin/Cloud5mins.ShortenerTools.TinyBlazorAdmin.csproj",
             "/property:GenerateFullPaths=true",
             "/consoleloggerparameters:NoSummary"
         ],
@@ -109,7 +109,7 @@
             "watch",
             "run",
             "--project",
-            "${workspaceFolder}/src/shortenerTools.csproj"
+            "${workspaceFolder}/src/Cloud5mins.ShortenerTools.TinyBlazorAdmin/Cloud5mins.ShortenerTools.TinyBlazorAdmin.csproj"
         ],
         "problemMatcher": "$msCompile"
     }
