@@ -5,9 +5,9 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject ILogger<UrlManager> Logger
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-@attribute [Authorize(Roles = "admin")] 
-
+@attribute [Authorize(Roles = "admin")]
 <PageTitle>Url Manager</PageTitle>
 
 <h1>Urls Manager</h1>
@@ -87,13 +87,13 @@ else
                         <div class="row">
                             <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
                                 <SfTextBox id="title" Placeholder="Title" FloatLabelType="@FloatLabelType.Auto"
-                                           @bind-Value="shortUrlRequest.Title"></SfTextBox>
+                                @bind-Value="shortUrlRequest.Title"></SfTextBox>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
                                 <SfTextBox id="url" Placeholder="Url" FloatLabelType="@FloatLabelType.Auto" Width="400px"
-                                           @bind-Value="shortUrlRequest.Url"></SfTextBox>  <button disabled="@IsUrlEmpty" type="button" class="btn" style="margin-top: 24px" @onclick=@Generate>
+                                @bind-Value="shortUrlRequest.Url"></SfTextBox>  <button disabled="@IsUrlEmpty" type="button" class="btn" style="margin-top: 24px" @onclick=@Generate>
                                     @if (isLoading)
                                     {
                                         <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -109,20 +109,20 @@ else
                         <div class="row">
                             <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
                                 <SfTextBox id="message" Placeholder="Message" Width="400px" FloatLabelType="@FloatLabelType.Auto" Multiline="true"
-                                           @bind-Value="shortUrlRequest.Message"></SfTextBox>
+                                @bind-Value="shortUrlRequest.Message"></SfTextBox>
                                 <ValidationMessage For="@(() => shortUrlRequest.Message)" />
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
                                 <SfTextBox id="vanity" Placeholder="Vanity" FloatLabelType="@FloatLabelType.Auto"
-                                           @bind-Value="shortUrlRequest.Vanity"></SfTextBox>
+                                @bind-Value="shortUrlRequest.Vanity"></SfTextBox>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
                                 <SfCheckBox id="posttosocial" Label="Post to Social" FloatLabelType="@FloatLabelType.Auto"
-                                            @bind-Checked="shortUrlRequest.PostToSocial"></SfCheckBox>
+                                @bind-Checked="shortUrlRequest.PostToSocial"></SfCheckBox>
                             </div>
                         </div>
                     </EditForm>
@@ -203,7 +203,17 @@ else
     private bool IsUrlEmpty => string.IsNullOrEmpty(shortUrlRequest.Url);
     protected override async Task OnInitializedAsync()
     {
-        await RefreshGrid();
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.IsInRole("Admin"))
+        {
+            await RefreshGrid();
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/unauthorized");
+        }
     }
 
     private async Task RefreshGrid()
@@ -299,11 +309,21 @@ else
         ShowEditPopup = false;
     }
 
-    [Authorize(Roles = "admin")]
-    void CreateShortUrl()
+    // [Authorize(Roles = "admin")]
+    async Task CreateShortUrl()
     {
-        shortUrlRequest = new ShortUrlRequest();
-        ShowCreatePopup = true;
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.IsInRole("Admin"))
+
+        {
+
+            shortUrlRequest = new ShortUrlRequest();
+
+            ShowCreatePopup = true;
+
+        }
     }
 
     [Inject] public IJSRuntime JsRuntime { get; set; }
