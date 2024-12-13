@@ -1,4 +1,5 @@
 @page "/urlmanager"
+@using System.Diagnostics
 
 
 @inject HttpClient Http
@@ -7,7 +8,7 @@
 @inject ILogger<UrlManager> Logger
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
-@attribute [Authorize(Roles = "admin")]
+
 <PageTitle>Url Manager</PageTitle>
 
 <h1>Urls Manager</h1>
@@ -206,7 +207,7 @@ else
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
-        if (user.IsInRole("Admin"))
+        if (user.IsInRole("admin") || Debugger.IsAttached)
         {
             await RefreshGrid();
         }
@@ -315,14 +316,10 @@ else
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
-        if (user.IsInRole("Admin"))
-
+        if (user.IsInRole("admin") || Debugger.IsAttached)
         {
-
             shortUrlRequest = new ShortUrlRequest();
-
             ShowCreatePopup = true;
-
         }
     }
 
