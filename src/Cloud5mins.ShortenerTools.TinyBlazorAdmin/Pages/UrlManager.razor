@@ -1,5 +1,6 @@
 @page "/urlmanager"
 @using System.Diagnostics
+@using System.Security.Claims
 
 
 @inject HttpClient Http
@@ -192,6 +193,8 @@ else
 
 @code {
 
+
+
     bool ShowCreatePopup = false;
     bool ShowEditPopup = false;
     private ListResponse urls = new ListResponse();
@@ -200,14 +203,15 @@ else
     SfGrid<ShortUrlEntity> grdUrls;
     public List<ShortUrlEntity> gridData { get; set; }
     private bool isLoading = false;
+    ClaimsPrincipal User;
 
     private bool IsUrlEmpty => string.IsNullOrEmpty(shortUrlRequest.Url);
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
+        User = authState.User;
 
-        if (user.IsInRole("admin") || Debugger.IsAttached)
+        if (User.IsInRole("admin") || Debugger.IsAttached)
         {
             await RefreshGrid();
         }
@@ -313,10 +317,7 @@ else
     // [Authorize(Roles = "admin")]
     async Task CreateShortUrl()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.IsInRole("admin") || Debugger.IsAttached)
+        if (User.IsInRole("admin") || Debugger.IsAttached)
         {
             shortUrlRequest = new ShortUrlRequest();
             ShowCreatePopup = true;
@@ -353,5 +354,4 @@ else
         await Http.PostAsJsonAsync<ShortUrlEntity>("/api/UrlArchive", urlEntity);
         await UpdateUIList();
     }
-
 }

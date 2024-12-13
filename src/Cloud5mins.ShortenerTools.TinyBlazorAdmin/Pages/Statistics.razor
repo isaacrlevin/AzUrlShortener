@@ -1,13 +1,13 @@
 @page "/statistics"
 @page "/statistics/{vanity}"
 
-
+@using System.Security.Claims
+@using System.Diagnostics
 @inject IJSRuntime JSRuntime
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 @inject ILogger<Statistics> Logger
-
- @attribute [Authorize(Roles = "admin")]
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <h1>@subTitle</h1>
 <a href="/UrlManager/"> &lt;&lt; Back</a>
@@ -17,7 +17,6 @@
     {
         if (clickStatsEntities.Count == 0)
         {
-
             <div>No Click Data</div>
         }
         else
@@ -113,6 +112,8 @@
 
 @code {
 
+
+
     [Parameter]
 #nullable enable
     public string? vanity { get; set; }
@@ -124,6 +125,7 @@
     private ObservableCollection<ClickStatsEntity> clickStatsEntities;
     private readonly Random _random = new Random();
     private string dayCount = string.Empty;
+    ClaimsPrincipal User;
 
     public class ClickData
     {
@@ -165,12 +167,20 @@
         return null;
     }
 
+
+
     protected override async void OnInitialized()
     {
-        clickStatsEntities = await UpdateUIList();
-        this.isLoading = false;
-        StateHasChanged();
-        if (clickStatsEntities != null)
-            dayCount = "Day(s): " + clickStatsEntities.Count.ToString();
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        User = authState.User;
+
+        if (User.IsInRole("admin") || Debugger.IsAttached)
+        {
+            clickStatsEntities = await UpdateUIList();
+            this.isLoading = false;
+            StateHasChanged();
+            if (clickStatsEntities != null)
+                dayCount = "Day(s): " + clickStatsEntities.Count.ToString();
+        }
     }
 }
