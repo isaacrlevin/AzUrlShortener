@@ -72,6 +72,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
 
                 var message = @$"Create a professional social media post for this link with proper hastags. 
+                                 Avoid unnecessary filler words such as 'unleash' or 'harness'
                                  Do not include the link in the response or the title of the page. Only return meaningful content regarding page referenced, 
                                  nothing else in the response. The entire response should not exceed {280 - contentLength - 3} characters. {shortUrlRequest.Url}";
                 var chatResponse = await _client.CompleteAsync(message);
