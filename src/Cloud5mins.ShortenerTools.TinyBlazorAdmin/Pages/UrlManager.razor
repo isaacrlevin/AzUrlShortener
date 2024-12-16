@@ -279,7 +279,7 @@ else
             isLoading = true;
             try
             {
-                using var response = await Http.PostAsJsonAsync<string>("/api/CreateDescription", shortUrlRequest.Url);
+                using var response = await Http.PostAsJsonAsync<ShortUrlRequest>("/api/CreateDescription", shortUrlRequest);
                 if (response.IsSuccessStatusCode)
                 {
                     var message = await response.Content.ReadFromJsonAsync<string>();
