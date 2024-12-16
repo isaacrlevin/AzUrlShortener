@@ -1,8 +1,11 @@
 using Cloud5mins.ShortenerTools.Core.Domain;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials;
+using Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials.LinkedIn.Models;
 using FishyFlip;
-using FishyFlip.Models;
+using FishyFlip.Lexicon;
+using FishyFlip.Lexicon.App.Bsky.Embed;
+using FishyFlip.Lexicon.App.Bsky.Richtext;
 using Mastonet;
 using Mastonet.Entities;
 using Microsoft.Azure.Functions.Worker;
@@ -12,10 +15,6 @@ using Microsoft.Extensions.Logging.Debug;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using System.Diagnostics;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Encodings.Web;
 using Tweetinvi;
 using Tweetinvi.Core.Web;
 
@@ -26,14 +25,31 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         private readonly ILogger _logger;
         private readonly ShortenerSettings _settings;
         private readonly ILinkedInManager _linkedInManager;
-
         public readonly string ShortenerBase = "https://isaacl.dev/";
+
+        public readonly MastodonClient mastodonClient;
+        public readonly ATProtocol atProtocol;
+        public readonly TweetsV2Poster poster;
 
         public SchedulePost(ILoggerFactory loggerFactory, ShortenerSettings settings, ILinkedInManager linkedInManager)
         {
             _logger = loggerFactory.CreateLogger<UrlRedirect>();
             _settings = settings;
             _linkedInManager = linkedInManager;
+
+
+           mastodonClient = new MastodonClient("fosstodon.org", _settings.MastodonAccessToken);
+           atProtocol = new ATProtocolBuilder()
+                .WithLogger(new DebugLoggerProvider().CreateLogger("FishyFlip")).Build();
+
+            var client = new TwitterClient(
+                _settings.TwitterConsumerKey,
+                _settings.TwitterConsumerSecret,
+                _settings.TwitterAccessToken,
+                _settings.TwitterAccessSecret
+                );
+
+            poster = new TweetsV2Poster(client);
         }
 
         [Function("SchedulePostTimer")]
@@ -76,14 +92,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
         private async Task Tweet(ShortUrlEntity linkInfo)
         {
-            var client = new TwitterClient(
-               _settings.TwitterConsumerKey,
-                _settings.TwitterConsumerSecret,
-                _settings.TwitterAccessToken,
-                _settings.TwitterAccessSecret
-                );
 
-            var poster = new TweetsV2Poster(client);
 
             ITwitterResult tweetResult = await poster.PostTweet(
                 new TweetV2PostRequest
@@ -102,17 +111,12 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
         private async Task PublishToMastodon(ShortUrlEntity linkInfo)
         {
-            var client = new MastodonClient("fosstodon.org", _settings.MastodonAccessToken);
-            var status = await client.PublishStatus($"{linkInfo.Title} \n {linkInfo.Message} \n\n {ShortenerBase}{linkInfo.RowKey}", new Mastonet.Visibility?((Mastonet.Visibility)0), (string)null, (IEnumerable<string>)null, false, (string)null, new DateTime?(), (string)null, (PollParameters)null);
+            var status = await mastodonClient.PublishStatus($"{linkInfo.Title} \n {linkInfo.Message} \n\n {ShortenerBase}{linkInfo.RowKey}", new Mastonet.Visibility?((Mastonet.Visibility)0), (string)null, (IEnumerable<string>)null, false, (string)null, new DateTime?(), (string)null, (PollParameters)null);
         }
 
         private async Task PostToBlueSky(ShortUrlEntity linkInfo)
         {
-            var atProtocol = new ATProtocolBuilder()
-                        .WithLogger(new DebugLoggerProvider().CreateLogger("FishyFlip"))
-            .Build();
-
-            var session = await atProtocol.AuthenticateWithPasswordAsync(_settings.BlueskyUserName, _settings.BlueskyPassword);
+            var session = await atProtocol.AuthenticateWithPasswordResultAsync(_settings.BlueskyUserName, _settings.BlueskyPassword);
 
             if (session is null)
             {
@@ -128,89 +132,51 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             HttpClient client = new HttpClient();
 
             List<Facet> facets = new List<Facet>();
-            FishyFlip.Models.Image? image = null;
+
+            var hashtags = BlueskyUtilities.ExtractHashtags(postTemplate);
+
+            foreach (var hashtag in hashtags)
+            {
+                (int hashtagStart, int hashtagEnd) = BlueskyUtilities.ParsePrompt(postTemplate, hashtag);
+                facets.Add(Facet.CreateFacetHashtag(hashtagStart, hashtagEnd, hashtag.Replace("#", string.Empty)));
+            }
 
             try
             {
-                string encodedUrl = HtmlEncoder.Default.Encode(shortUrl);
-                var card = await client.GetFromJsonAsync<BlueSkyCard>($"https://cardyb.bsky.app/v1/extract?url={encodedUrl}");
+                var image = await BlueskyUtilities.UploadImage(shortUrl, atProtocol, facets, postTemplate);
 
-                if (card != null)
+                if (facets != null && image != null)
                 {
-                    var uri = new Uri(card.image);
+                    var postResult = await atProtocol.Feed.CreatePostAsync(postTemplate, facets: facets, embed: new EmbedImages(images: new() { image }));
 
-                    var uriWithoutQuery = uri.GetLeftPart(UriPartial.Path);
-                    var fileExtension = Path.GetExtension(uriWithoutQuery);
-
-                    var fileName = card.title;
-
-                    var imageBytes = await client.GetByteArrayAsync(uri);
-
-                    if (imageBytes.Length != 0)
-                    {
-                        if (imageBytes.Length > 999999)
+                    postResult.Switch(
+                        success =>
                         {
-                            imageBytes = await ScaleImage(imageBytes);
+                            Console.WriteLine($"Post: {success.Uri} {success.Cid}");
+                        },
+                        error =>
+                        {
+                            Console.WriteLine($"Error: {error.StatusCode} {error.Detail}");
+                        });
+                }
+                else
+                {
+                    var postResult = await atProtocol.Feed.CreatePostAsync(postTemplate, facets: facets);
+                    postResult.Switch(
+                        success =>
+                        {
+                            Console.WriteLine($"Post: {success.Uri} {success.Cid}");
+                        },
+                        error =>
+                        {
+                            Console.WriteLine($"Error: {error.StatusCode} {error.Detail}");
                         }
-
-                        await File.WriteAllBytesAsync(Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"), imageBytes);
-
-                        var stream = File.OpenRead(Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"));
-                        var content = new StreamContent(stream);
-                        content.Headers.ContentLength = stream.Length;
-
-                        content.Headers.ContentType = new MediaTypeHeaderValue("image/jpg");
-                        var blobResult = await atProtocol.Repo.UploadBlobAsync(content);
-
-                        await blobResult.SwitchAsync(
-                            async success =>
-                            {
-                                image = success.Blob.ToImage();
-                            },
-                            async error =>
-                            {
-                                _logger.LogError($"Error: {error.StatusCode} {error.Detail}");
-                            }
-                            );
-                    }
-
-                    int promptStart = postTemplate.IndexOf($"{shortUrl}", StringComparison.InvariantCulture);
-                    int promptEnd = promptStart + Encoding.Default.GetBytes($"{shortUrl}").Length;
-                    var index = new FacetIndex(promptStart, promptEnd);
-                    var link = FacetFeature.CreateLink(card.url);
-                    facets.Add(new Facet(index, link));
-
+                        );
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Error: {ex.Message}");
-            }
-
-
-            Result<CreatePostResponse> postResult = null;
-
-            if (image != null)
-            {
-                postResult = await atProtocol.Repo.CreatePostAsync(postTemplate, facets.ToArray(), new ImagesEmbed(image, $"{shortUrl}"));
-            }
-            else
-            {
-                postResult = await atProtocol.Repo.CreatePostAsync(postTemplate, facets.ToArray());
-            }
-
-            if (postResult != null)
-            {
-                postResult.Switch(
-                    success =>
-                    {
-                        _logger.LogInformation($"Post: {success.Uri} {success.Cid}");
-                    },
-                    error =>
-                    {
-                        _logger.LogError($"Error: {error.StatusCode} {error.Detail}");
-                    }
-                    );
             }
         }
 

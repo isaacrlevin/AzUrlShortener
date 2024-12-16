@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Cloud5mins.ShortenerTools.Core.Domain.Socials
+namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
 {
     public class BlueSkyCard
     {
