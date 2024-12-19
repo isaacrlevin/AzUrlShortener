@@ -12,6 +12,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
+using OllamaSharp.Models;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using System.Diagnostics;
@@ -38,9 +39,9 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             _linkedInManager = linkedInManager;
 
 
-           mastodonClient = new MastodonClient("fosstodon.org", _settings.MastodonAccessToken);
-           atProtocol = new ATProtocolBuilder()
-                .WithLogger(new DebugLoggerProvider().CreateLogger("FishyFlip")).Build();
+            mastodonClient = new MastodonClient("fosstodon.org", _settings.MastodonAccessToken);
+            atProtocol = new ATProtocolBuilder()
+                 .WithLogger(new DebugLoggerProvider().CreateLogger("FishyFlip")).Build();
 
             var client = new TwitterClient(
                 _settings.TwitterConsumerKey,
@@ -50,6 +51,30 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                 );
 
             poster = new TweetsV2Poster(client);
+        }
+
+        [Function("TestShortUrl")]
+        public async Task Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "test/{shortUrl}")] HttpRequestData req, string shortUrl, ExecutionContext context)
+        {
+            if (Debugger.IsAttached)
+            {
+                if (!string.IsNullOrWhiteSpace(shortUrl))
+                {
+                    StorageTableHelper stgHelper = new StorageTableHelper(_settings.DataStorage);
+
+                    var tempUrl = new ShortUrlEntity(string.Empty, shortUrl);
+                    var item = await stgHelper.GetShortUrlEntity(tempUrl);
+
+                    if (item != null)
+                    {
+                        await Tweet(item);
+                        await PostToBlueSky(item);
+                        await PostToLinkedIn(item);
+                        await PublishToMastodon(item);
+
+                    }
+                }
+            }
         }
 
         [Function("SchedulePostTimer")]

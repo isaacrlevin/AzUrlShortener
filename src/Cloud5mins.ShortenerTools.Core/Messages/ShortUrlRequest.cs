@@ -7,9 +7,9 @@ namespace Cloud5mins.ShortenerTools.Core.Messages
     {
         private string _vanity;
 
-        public string Title { get; set; }
+        public string Title { get; set; } = string.Empty;
 
-        public string Message { get; set; }
+        public string Message { get; set; } = string.Empty;
 
         public bool PostToSocial { get; set; } = true;
 

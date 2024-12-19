@@ -61,7 +61,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
                 var uriWithoutQuery = uri.GetLeftPart(UriPartial.Path);
                 var fileExtension = Path.GetExtension(uriWithoutQuery);
 
-                var fileName = card.title;
+                var fileName = SanitizeFileName(card.title);
 
                 var imageBytes = await client.GetByteArrayAsync(uri);
                 await File.WriteAllBytesAsync(Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"), imageBytes);
@@ -95,6 +95,17 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
                     );
                 return image;
             }
+        }
+
+        public static string SanitizeFileName(string input)
+        {
+            // Define a regular expression to match invalid characters
+            var regex = new Regex("[^a-zA-Z0-9_-]");
+
+            // Replace invalid characters with an empty string
+            var sanitized = regex.Replace(input, string.Empty);
+
+            return sanitized;
         }
     }
 }

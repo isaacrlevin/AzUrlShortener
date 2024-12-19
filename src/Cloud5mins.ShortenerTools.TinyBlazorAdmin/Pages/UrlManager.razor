@@ -2,7 +2,7 @@
 @using System.Diagnostics
 @using System.Security.Claims
 
-
+@implements IDisposable
 @inject HttpClient Http
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
@@ -84,11 +84,12 @@ else
 
                 <!-- Modal body -->
                 <div class="modal-body">
-                    <EditForm Model="shortUrlRequest" OnValidSubmit="SaveShortUrl">
+                    <EditForm OnValidSubmit="SaveShortUrl" EditContext="editContext" FormName="UrlManager">
                         <DataAnnotationsValidator />
+                        <ValidationSummary />
                         <div class="row">
                             <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
-                                <SfTextBox id="title" Placeholder="Title" FloatLabelType="@FloatLabelType.Auto"
+                                <SfTextBox id="title" Placeholder="Title" FloatLabelType="@FloatLabelType.Auto" @oninput="@((e) => GetCharacterCount(e, "title"))"
                                 @bind-Value="shortUrlRequest.Title"></SfTextBox>
                             </div>
                         </div>
@@ -110,9 +111,14 @@ else
                         </div>
                         <div class="row">
                             <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
-                                <SfTextBox id="message" Placeholder="Message" Width="400px" FloatLabelType="@FloatLabelType.Auto" Multiline="true"
+                                <SfTextBox id="message" Placeholder="Message" Width="400px" FloatLabelType="@FloatLabelType.Auto" Multiline="true" @oninput="@((e) => GetCharacterCount(e, "message"))"
                                 @bind-Value="shortUrlRequest.Message"></SfTextBox>
                                 <ValidationMessage For="@(() => shortUrlRequest.Message)" />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
+                                Character Count: @characterCount
                             </div>
                         </div>
                         <div class="row">
@@ -127,21 +133,17 @@ else
                                 @bind-Checked="shortUrlRequest.PostToSocial"></SfCheckBox>
                             </div>
                         </div>
+                        <!-- Modal footer -->
+                        <div class="modal-footer">
+                            <button type="button" class="btn" @onclick="@ClosePopup">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
                     </EditForm>
                 </div>
-
-                <!-- Modal footer -->
-                <div class="modal-footer">
-                    <button type="button" class="btn" @onclick="@ClosePopup">Cancel</button>
-                    <button type="button" class="btn btn-primary" @onclick=@SaveShortUrl>Save</button>
-                </div>
-
             </div>
         </div>
     </div>
-
 }
-
 
 @if (ShowEditPopup)
 {
@@ -193,17 +195,22 @@ else
 
 @code {
 
-
-
     bool ShowCreatePopup = false;
     bool ShowEditPopup = false;
     private ListResponse urls = new ListResponse();
-    ShortUrlRequest shortUrlRequest = new ShortUrlRequest();
+
+    [SupplyParameterFromForm]
+    ShortUrlRequest? shortUrlRequest { get; set; }
+    EditContext? editContext;
+    ValidationMessageStore? messageStore;
+
     ShortUrlEntity editedUrl;
     SfGrid<ShortUrlEntity> grdUrls;
     public List<ShortUrlEntity> gridData { get; set; }
     private bool isLoading = false;
     ClaimsPrincipal User;
+
+    int characterCount = 0;
 
     private bool IsUrlEmpty => string.IsNullOrEmpty(shortUrlRequest.Url);
     protected override async Task OnInitializedAsync()
@@ -221,6 +228,14 @@ else
         }
     }
 
+    private void HandleValidationRequested(object? sender,
+    ValidationRequestedEventArgs args)
+    {
+        messageStore?.Clear();
+
+        ValidateCharacterCount();
+
+    }
     private async Task RefreshGrid()
     {
         try
@@ -250,11 +265,37 @@ else
         }
     }
 
+    private void GetCharacterCount(Microsoft.AspNetCore.Components.ChangeEventArgs e, string sender)
+    {        
+        if (sender == "title")
+        {
+            characterCount = 25 + shortUrlRequest.Message.Length + e.Value.ToString().Length;
+        }
+        else if (sender == "message")
+        {
+            characterCount = 25 + shortUrlRequest.Title.Length + e.Value.ToString().Length;
+        }
+        ValidateCharacterCount();
+    }
+
+    private void ValidateCharacterCount()
+    {
+        messageStore.Clear();
+
+        if (characterCount > 239)
+        {
+            messageStore.Add(() => characterCount, "Character count must be 239 or less.");
+        }
+
+        editContext.NotifyValidationStateChanged();
+    }
+
     private async Task UpdateUIList()
     {
         await RefreshGrid();
         StateHasChanged();
     }
+
     private async Task SaveShortUrl()
     {
         ShowCreatePopup = false;
@@ -314,13 +355,16 @@ else
         ShowEditPopup = false;
     }
 
-    // [Authorize(Roles = "admin")]
-    async Task CreateShortUrl()
+    void CreateShortUrl()
     {
         if (User.IsInRole("admin") || Debugger.IsAttached)
         {
-            shortUrlRequest = new ShortUrlRequest();
             ShowCreatePopup = true;
+            shortUrlRequest ??= new();
+            editContext = new(shortUrlRequest);
+            messageStore = new(editContext);
+            editContext.OnFieldChanged += HandleFieldChanged;
+            editContext.OnValidationRequested += HandleValidationRequested;
         }
     }
 
@@ -353,5 +397,17 @@ else
     {
         await Http.PostAsJsonAsync<ShortUrlEntity>("/api/UrlArchive", urlEntity);
         await UpdateUIList();
+    }
+
+    private void HandleFieldChanged(object sender, FieldChangedEventArgs e)
+    {
+        ValidateCharacterCount();
+    }
+    public void Dispose()
+    {
+        if (editContext is not null)
+        {
+            editContext.OnValidationRequested -= HandleValidationRequested;
+        }
     }
 }
