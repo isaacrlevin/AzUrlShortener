@@ -49,10 +49,22 @@
             </SfChart>
 
             <div style="display: flex; justify-content: space-around;">
+                <SfAccumulationChart Title="ShortUrl Statistics" Width="200px">
+                    <AccumulationChartSeriesCollection>
+                        <AccumulationChartSeries DataSource="@clickStatsEntities.GroupBy(a=> a.ShortUrl).Select(stat => new { ShortUrl = stat.Key, Count = stat.Count() })"
+                                                 XName="ShortUrl" YName="Count" Name="ShortUrl">
+                            <AccumulationDataLabelSettings Visible="true" />
+                        </AccumulationChartSeries>
+                    </AccumulationChartSeriesCollection>
+
+                    <AccumulationChartLegendSettings Visible="true"></AccumulationChartLegendSettings>
+                </SfAccumulationChart>
+
                 <SfAccumulationChart Title="Platform Statistics" Width="200px">
                     <AccumulationChartSeriesCollection>
                         <AccumulationChartSeries DataSource="@clickStatsEntities.GroupBy(a=> a.Platform).Select(stat => new { Platform = stat.Key, Count = stat.Count() })"
                                                  XName="Platform" YName="Count" Name="Platform">
+                            <AccumulationDataLabelSettings Visible="true" />
                         </AccumulationChartSeries>
                     </AccumulationChartSeriesCollection>
 
@@ -63,6 +75,7 @@
                     <AccumulationChartSeriesCollection>
                         <AccumulationChartSeries DataSource="@clickStatsEntities.GroupBy(a=> a.Browser).Select(stat => new { Browser = stat.Key, Count = stat.Count() })"
                                                  XName="Browser" YName="Count" Name="Browser">
+                            <AccumulationDataLabelSettings Visible="true" />
                         </AccumulationChartSeries>
                     </AccumulationChartSeriesCollection>
 
@@ -73,6 +86,7 @@
                     <AccumulationChartSeriesCollection>
                         <AccumulationChartSeries DataSource="@clickStatsEntities.GroupBy(a => a.IsDesktop).Select(stat => new { DeviceType = stat.Key ? "Desktop" : "Mobile", Count = stat.Count() })"
                                                  XName="DeviceType" YName="Count" Name="DeviceType">
+                            <AccumulationDataLabelSettings Visible="true" />
                         </AccumulationChartSeries>
                     </AccumulationChartSeriesCollection>
 
