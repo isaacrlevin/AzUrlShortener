@@ -27,6 +27,9 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
         public DateTimeOffset? Timestamp { get; set; }
         public ETag ETag { get; set; }
 
+        [IgnoreDataMember]
+        public int ClickCount { get; set; }
+
         public ShortUrlEntity() { }
 
         public ShortUrlEntity(string longUrl, string endUrl)

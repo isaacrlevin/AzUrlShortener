@@ -53,8 +53,11 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             List<ShortUrlEntity> lstShortUrl = new List<ShortUrlEntity>();
             Pageable<ShortUrlEntity> queryResultsLINQ = tableClient.Query<ShortUrlEntity>(ent => !ent.IsArchived && ent.RowKey != "KEY");
 
+            var stats = await GetAllStats();
+
             foreach (ShortUrlEntity qEntity in queryResultsLINQ)
             {
+                qEntity.ClickCount = stats.Where(a => a.PartitionKey == qEntity.RowKey).Count();
                 lstShortUrl.AddRange(qEntity);
             }
 

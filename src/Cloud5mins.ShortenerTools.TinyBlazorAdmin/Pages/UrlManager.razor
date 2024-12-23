@@ -45,6 +45,7 @@ else
             </GridColumn>
             <GridColumn Field=@nameof(ShortUrlEntity.Title) HeaderText="Title"></GridColumn>
             <GridColumn Field=@nameof(ShortUrlEntity.Url) HeaderText="Url"></GridColumn>
+            <GridColumn Width="100" Field=@nameof(ShortUrlEntity.ClickCount) HeaderText="Clicks"></GridColumn>
             <GridColumn Width="100" TextAlign="TextAlign.Right" HeaderText="Statistics">
                 <Template>
                     @{
@@ -304,6 +305,7 @@ else
         {
             await Http.PostAsJsonAsync<ShortUrlRequest>("/api/UrlCreate", shortUrlRequest);
             await UpdateUIList();
+            shortUrlRequest = new ShortUrlRequest();
         }
         catch (System.Exception ex)
         {
