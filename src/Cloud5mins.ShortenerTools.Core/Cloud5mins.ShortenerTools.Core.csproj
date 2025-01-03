@@ -5,6 +5,7 @@
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
 	<ItemGroup>
+		<PackageReference Include="Azure.Communication.Email" Version="1.0.1" />
 		<PackageReference Include="cronos" Version="0.9.0" />
 		<PackageReference Include="Azure.Data.Tables" Version="12.9.1" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />

@@ -1,17 +1,13 @@
-using Azure.AI.OpenAI;
 using Cloud5mins.ShortenerTools.Core.Domain;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials.LinkedIn.Models;
 using Cloud5mins.ShortenerTools.Functions;
 using LinkedIn;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
-using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using OpenAI;
-using System.ClientModel;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -38,6 +34,7 @@ builder.Configuration.Bind(shortenerSettings);
 
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ILinkedInManager, LinkedInManager>();
+builder.Services.AddSingleton<EmailService, EmailService>();
 
 builder.Logging.Services.Configure<LoggerFilterOptions>(options =>
 {
