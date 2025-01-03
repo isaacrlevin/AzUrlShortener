@@ -124,7 +124,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
                 if (text.Length > 280)
                 {
-                    text = text.Substring(0, 280);
+                    text = $"{linkInfo.Title} \n\n {ShortenerBase}{linkInfo.RowKey}";
                 }
                 ITwitterResult tweetResult = await poster.PostTweet(
                     new TweetV2PostRequest
