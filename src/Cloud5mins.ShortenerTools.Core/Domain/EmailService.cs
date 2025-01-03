@@ -17,8 +17,22 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             _emailClient = new EmailClient(_settings.COMMUNICATION_SERVICES_CONNECTION_STRING);
         }
 
-        public async Task SendEmailInput(string subject, string htmlContent)
+        public async Task SendExceptionEmail(string subject, Exception ex)
         {
+            if (ex == null)
+            {
+                return;
+            }
+
+            string htmlContent = $@"
+                <html>
+                <body>
+                    <h1>Exception Type: {ex.GetType().Name}</h1>
+                    <p>Exception Message: {ex.Message}</p>
+                    <p>StackTrace: {ex.StackTrace}</p>
+                </body>
+                </html>";
+
             /// Send the email message with WaitUntil.Started
             EmailSendOperation emailSendOperation = await _emailClient.SendAsync(
                 Azure.WaitUntil.Started,

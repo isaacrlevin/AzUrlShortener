@@ -142,10 +142,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             }
             catch (TwitterException ex)
             {
-                await _emailService.SendEmailInput(
-                     "Error when posting tweet",
-                     ex.Message
-                 );
+                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.ShortUrl} to Twitter", ex);
             }
         }
 
@@ -157,10 +154,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             }
             catch (Exception ex)
             {
-                await _emailService.SendEmailInput(
-                       "Error when posting to Mastodon",
-                       ex.Message
-                   );
+                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.ShortUrl} to Mastodon", ex);
             }
         }
 
@@ -228,10 +222,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             }
             catch (Exception ex)
             {
-                await _emailService.SendEmailInput(
-                       "Error when posting to Bluesky",
-                       ex.Message
-                   );
+                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.ShortUrl} to Bluesky", ex);
             }
         }
 
@@ -247,10 +238,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
             catch (Exception ex)
             {
-                await _emailService.SendEmailInput(
-                       "Error when posting to LinkedIn",
-                       ex.Message
-                   );
+                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.ShortUrl} to LinkedIn", ex);
             }
         }
         public async Task<byte[]> ScaleImage(byte[] imageBytes, int maxSizeInBytes = 999999)
