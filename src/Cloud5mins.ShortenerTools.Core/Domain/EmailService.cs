@@ -57,17 +57,17 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
 
                 if (emailSendOperation.HasValue)
                 {
-                    Console.WriteLine($"Email queued for delivery. Status = {emailSendOperation.Value.Status}");
+                    _logger.LogInformation($"Email queued for delivery. Status = {emailSendOperation.Value.Status}");
                 }
             }
-            catch (RequestFailedException ex)
+            catch (RequestFailedException exception)
             {
-                Console.WriteLine($"Email send failed with Code = {ex.ErrorCode} and Message = {ex.Message}");
+               _logger.LogError($"Email send failed with Code = {exception.ErrorCode} and Message = {exception.Message}");
             }
 
             /// Get the OperationId so that it can be used for tracking the message for troubleshooting
             string operationId = emailSendOperation.Id;
-            Console.WriteLine($"Email operation id = {operationId}");
+            _logger.LogInformation($"Email operation id = {operationId}");
         }
     }
 }

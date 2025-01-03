@@ -197,11 +197,11 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                     postResult.Switch(
                         success =>
                         {
-                            Console.WriteLine($"Post: {success.Uri} {success.Cid}");
+                            _logger.LogInformation($"Post: {success.Uri} {success.Cid}");
                         },
                         error =>
                         {
-                            Console.WriteLine($"Error: {error.StatusCode} {error.Detail}");
+                            _logger.LogInformation($"Error: {error.StatusCode} {error.Detail}");
                         });
                 }
                 else
@@ -210,11 +210,11 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                     postResult.Switch(
                         success =>
                         {
-                            Console.WriteLine($"Post: {success.Uri} {success.Cid}");
+                            _logger.LogInformation($"Post: {success.Uri} {success.Cid}");
                         },
                         error =>
                         {
-                            Console.WriteLine($"Error: {error.StatusCode} {error.Detail}");
+                            _logger.LogInformation($"Error: {error.StatusCode} {error.Detail}");
                         }
                         );
                 }
