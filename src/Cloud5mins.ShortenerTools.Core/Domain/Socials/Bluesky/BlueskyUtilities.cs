@@ -63,38 +63,46 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
 
                 var fileName = SanitizeFileName(card.title);
 
-                var imageBytes = await client.GetByteArrayAsync(uri);
-                await File.WriteAllBytesAsync(Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"), imageBytes);
+                try
+                {
+                    var imageBytes = await client.GetByteArrayAsync(uri);
+                    await File.WriteAllBytesAsync(Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"), imageBytes);
 
-                var stream = File.OpenRead(Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"));
-                var content = new StreamContent(stream);
-                content.Headers.ContentLength = stream.Length;
+                    var stream = File.OpenRead(Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"));
+                    var content = new StreamContent(stream);
+                    content.Headers.ContentLength = stream.Length;
 
-                content.Headers.ContentType = new MediaTypeHeaderValue("image/jpg");
-                var blobResult = await atProtocol.Repo.UploadBlobAsync(content);
+                    content.Headers.ContentType = new MediaTypeHeaderValue("image/jpg");
+                    var blobResult = await atProtocol.Repo.UploadBlobAsync(content);
 
-                Image image = null;
-                await blobResult.SwitchAsync(
-                    async success =>
-                    {
-                        //image = success.Blob.ToImage();
+                    Image image = null;
+                    await blobResult.SwitchAsync(
+                        async success =>
+                        {
+                            //image = success.Blob.ToImage();
 
-                        image = new Image(
-                            image: success.Blob,
-                             alt: $"Embed Card for {url}"
-                            );
+                            image = new Image(
+                                image: success.Blob,
+                                 alt: $"Embed Card for {url}"
+                                );
 
-                        (int promptStart, int promptEnd) = BlueskyUtilities.ParsePrompt(postTemplate, url);
+                            (int promptStart, int promptEnd) = BlueskyUtilities.ParsePrompt(postTemplate, url);
 
-                        facets.Add(Facet.CreateFacetLink(promptStart, promptEnd, url));
-                    },
-                    async error =>
-                    {
-                        Console.WriteLine($"Error: {error.StatusCode} {error.Detail}");
-                    }
-                    );
-                return image;
+                            facets.Add(Facet.CreateFacetLink(promptStart, promptEnd, url));
+                        },
+                        async error =>
+                        {
+                            Console.WriteLine($"Error: {error.StatusCode} {error.Detail}");
+                        }
+                        );
+                    return image;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }                
             }
+            return null;
         }
 
         public static string SanitizeFileName(string input)
