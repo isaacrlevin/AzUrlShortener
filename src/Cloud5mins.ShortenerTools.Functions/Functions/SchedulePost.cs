@@ -241,6 +241,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                 await _emailService.SendExceptionEmail($"Error when posting {linkInfo.ShortUrl} to LinkedIn", ex);
             }
         }
+        
         public async Task<byte[]> ScaleImage(byte[] imageBytes, int maxSizeInBytes = 999999)
         {
             using var image = SixLabors.ImageSharp.Image.Load(imageBytes);

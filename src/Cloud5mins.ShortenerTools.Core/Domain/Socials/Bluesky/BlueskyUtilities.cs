@@ -22,6 +22,20 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
             return (promptStart, promptEnd);
         }
 
+        public static List<string> ExtractUrls(string input)
+        {
+            var urls = new List<string>();
+            var regex = new Regex(@"https?://[^\s/$.?#].[^\s]*");
+            var matches = regex.Matches(input);
+
+            foreach (Match match in matches)
+            {
+                urls.Add(match.Value);
+            }
+
+            return urls;
+        }
+
         public static List<string> ExtractHashtags(string post)
         {
             var hashtags = new List<string>();

@@ -17,5 +17,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
         public string EmailFrom { get; set; }
         public string EmailTo { get; set; }
         public string COMMUNICATION_SERVICES_CONNECTION_STRING { get; set; }
+        
+        public string ThreadsToken { get; set; }
     }
 }

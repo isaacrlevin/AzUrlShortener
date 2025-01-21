@@ -1,6 +1,7 @@
 ﻿using Azure;
 using Azure.Communication.Email;
 using Microsoft.Extensions.Logging;
+using System.Text;
 
 namespace Cloud5mins.ShortenerTools.Core.Domain
 {
@@ -17,6 +18,16 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             _emailClient = new EmailClient(_settings.COMMUNICATION_SERVICES_CONNECTION_STRING);
         }
 
+        private string StackTraceToString(Exception ex)
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+            foreach (var line in ex.StackTrace.Split(Environment.NewLine))
+            {
+               stringBuilder.AppendLine("    {line}");
+            }
+            return stringBuilder.ToString();
+        }
+
         public async Task SendExceptionEmail(string subject, Exception ex)
         {
             if (ex == null)
@@ -29,7 +40,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
                 <body>
                     <h1>Exception Type: {ex.GetType().Name}</h1>
                     <p>Exception Message: {ex.Message}</p>
-                    <p>StackTrace: {ex.StackTrace}</p>
+                    <p>StackTrace: {StackTraceToString(ex)}</p>
                 </body>
                 </html>";
 
