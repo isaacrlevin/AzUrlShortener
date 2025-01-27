@@ -2,6 +2,7 @@ using Cloud5mins.ShortenerTools.Core.Domain;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials.LinkedIn.Models;
+using Cloud5mins.ShortenerTools.Core.Domain.Socials.Threads;
 using FishyFlip;
 using FishyFlip.Lexicon;
 using FishyFlip.Lexicon.App.Bsky.Embed;
@@ -28,17 +29,18 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         private readonly ILinkedInManager _linkedInManager;
         private readonly EmailService _emailService;
         public readonly string ShortenerBase = "https://isaacl.dev/";
-
+        public readonly IThreadsManager _threadsManager;
         public readonly MastodonClient mastodonClient;
         public readonly ATProtocol atProtocol;
         public readonly TweetsV2Poster poster;
 
-        public SchedulePost(ILoggerFactory loggerFactory, ShortenerSettings settings, ILinkedInManager linkedInManager, EmailService emailService)
+        public SchedulePost(ILoggerFactory loggerFactory, ShortenerSettings settings, ILinkedInManager linkedInManager, EmailService emailService, IThreadsManager threadsManager)
         {
             _logger = loggerFactory.CreateLogger<SchedulePost>();
             _settings = settings;
             _linkedInManager = linkedInManager;
             _emailService = emailService;
+            _threadsManager = threadsManager;
 
             mastodonClient = new MastodonClient("fosstodon.org", _settings.MastodonAccessToken);
             atProtocol = new ATProtocolBuilder()
@@ -52,6 +54,8 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                 );
 
             poster = new TweetsV2Poster(client);
+            _threadsManager = threadsManager;
+
         }
 
         [Function("TestShortUrl")]
@@ -111,6 +115,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                 await PostToBlueSky(item);
                 await PostToLinkedIn(item);
                 await PublishToMastodon(item);
+                await PostToThreads(item);
                 item.Posted = true;
                 var result = await stgHelper.UpdateShortUrlEntity(item);
             }
@@ -241,7 +246,17 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                 await _emailService.SendExceptionEmail($"Error when posting {linkInfo.ShortUrl} to LinkedIn", ex);
             }
         }
-        
+
+        private async Task PostToThreads(ShortUrlEntity linkInfo)
+        {
+            var postTemplate = $"{linkInfo.Title} \n {linkInfo.Message} \n\n {ShortenerBase}{linkInfo.RowKey}";
+
+            postTemplate = postTemplate.Replace("\r\n", " ");
+
+
+            await _threadsManager.PostContentAsync(postTemplate, linkInfo.Url , _settings.ThreadsToken);
+        }
+
         public async Task<byte[]> ScaleImage(byte[] imageBytes, int maxSizeInBytes = 999999)
         {
             using var image = SixLabors.ImageSharp.Image.Load(imageBytes);
