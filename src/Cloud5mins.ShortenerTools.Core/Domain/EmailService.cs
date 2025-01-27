@@ -23,21 +23,27 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             StringBuilder stringBuilder = new StringBuilder();
             foreach (var line in ex.StackTrace.Split(Environment.NewLine))
             {
-               stringBuilder.AppendLine("    {line}");
+               stringBuilder.AppendLine($"    {line}");
             }
             return stringBuilder.ToString();
         }
 
-        public async Task SendExceptionEmail(string subject, Exception ex)
+        public async Task SendExceptionEmail(string subject, Exception ex, string message = "")
         {
             if (ex == null)
             {
                 return;
             }
 
+            if (!string.IsNullOrEmpty(message))
+            {
+                message = $"<p>{message}</p>";
+            }   
+
             string htmlContent = $@"
                 <html>
                 <body>
+                    {message}
                     <h1>Exception Type: {ex.GetType().Name}</h1>
                     <p>Exception Message: {ex.Message}</p>
                     <p>StackTrace: {StackTraceToString(ex)}</p>
