@@ -8,17 +8,17 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-		<PackageReference Include="Syncfusion.Blazor.Calendars" Version="25.1.40" />
-		<PackageReference Include="Syncfusion.Blazor.Inputs" Version="25.1.40" />
-		<PackageReference Include="Syncfusion.Blazor.Charts" Version="25.1.40" />
-		<PackageReference Include="Syncfusion.Blazor.Grid" Version="25.1.40" />
-		<PackageReference Include="Syncfusion.Blazor.Spinner" Version="25.1.40" />
+		<PackageReference Include="Syncfusion.Blazor.Calendars" Version="28.2.4" />
+		<PackageReference Include="Syncfusion.Blazor.Inputs" Version="28.2.4" />
+		<PackageReference Include="Syncfusion.Blazor.Charts" Version="28.2.4" />
+		<PackageReference Include="Syncfusion.Blazor.Grid" Version="28.2.4" />
+		<PackageReference Include="Syncfusion.Blazor.Spinner" Version="28.2.4" />
 		<PackageReference Include="AnthonyChu.AzureStaticWebApps.Blazor.Authentication" Version="0.0.2-preview" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.0" />
-		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.0" />
-		<PackageReference Include="Microsoft.Authentication.WebAssembly.Msal" Version="9.0.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.1" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.1" />
+		<PackageReference Include="Microsoft.Authentication.WebAssembly.Msal" Version="9.0.1" />
 		<PackageReference Include="System.Private.Uri" Version="4.3.2" />
-		<PackageReference Include="System.Text.Json" Version="9.0.0" />
+		<PackageReference Include="System.Text.Json" Version="9.0.1" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Cloud5mins.ShortenerTools.Core\Cloud5mins.ShortenerTools.Core.csproj" />
