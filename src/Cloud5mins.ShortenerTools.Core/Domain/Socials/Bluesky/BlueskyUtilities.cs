@@ -63,7 +63,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
             HttpClient client = new HttpClient();
             var card = await client.GetFromJsonAsync<BlueSkyCard>($"https://cardyb.bsky.app/v1/extract?url={encodedUrl}");
 
-            if (card == null)
+            if (card == null && !string.IsNullOrEmpty(card.image))
             {
                 return null;
             }

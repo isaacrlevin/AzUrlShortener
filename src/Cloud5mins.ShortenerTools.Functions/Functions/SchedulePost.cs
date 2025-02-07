@@ -147,7 +147,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             }
             catch (TwitterException ex)
             {
-                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.ShortUrl} to Twitter", ex);
+                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.RowKey} to Twitter", ex);
             }
         }
 
@@ -159,7 +159,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             }
             catch (Exception ex)
             {
-                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.ShortUrl} to Mastodon", ex);
+                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.RowKey} to Mastodon", ex);
             }
         }
 
@@ -227,7 +227,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             }
             catch (Exception ex)
             {
-                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.ShortUrl} to Bluesky", ex);
+                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.RowKey} to Bluesky", ex);
             }
         }
 
@@ -243,18 +243,25 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
             catch (Exception ex)
             {
-                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.ShortUrl} to LinkedIn", ex);
+                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.RowKey} to LinkedIn", ex);
             }
         }
 
         private async Task PostToThreads(ShortUrlEntity linkInfo)
         {
-            var postTemplate = $"{linkInfo.Title} \n {linkInfo.Message} \n\n {ShortenerBase}{linkInfo.RowKey}";
+            try
+            {
+                var postTemplate = $"{linkInfo.Title} \n {linkInfo.Message} \n\n {ShortenerBase}{linkInfo.RowKey}";
 
-            postTemplate = postTemplate.Replace("\r\n", " ");
+                postTemplate = postTemplate.Replace("\r\n", " ");
 
 
-            await _threadsManager.PostContentAsync(postTemplate, linkInfo.Url , _settings.ThreadsToken);
+                await _threadsManager.PostContentAsync(postTemplate, linkInfo.Url, _settings.ThreadsToken);
+            }
+            catch (Exception ex)
+            {
+                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.RowKey} to Threads", ex);
+            }
         }
 
         public async Task<byte[]> ScaleImage(byte[] imageBytes, int maxSizeInBytes = 999999)
