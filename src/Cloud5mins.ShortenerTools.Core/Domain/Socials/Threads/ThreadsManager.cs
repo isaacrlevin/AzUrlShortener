@@ -42,7 +42,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Threads
             var card = await client.GetFromJsonAsync<BlueSkyCard>($"https://cardyb.bsky.app/v1/extract?url={encodedUrl}");
 
             string mediaContainerUrl = string.Empty;
-            if (card != null)
+            if (card != null && !string.IsNullOrEmpty(card.image))
             {
                 mediaContainerUrl = $"https://graph.threads.net/v1.0/me/threads?media_type=IMAGE&image_url={card.image}&text={UrlEncoder.Default.Encode(message)}&access_token={_accessToken}";
             }
@@ -50,6 +50,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Threads
             {
                 mediaContainerUrl = $"https://graph.threads.net/v1.0/me/threads?media_type=TEXT&text={UrlEncoder.Default.Encode(message)}&access_token={_accessToken}";
             }
+
 
             var content = new StringContent(JsonSerializer.Serialize(new { }), Encoding.UTF8, "application/json");
 
@@ -59,14 +60,6 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Threads
             string mediaId = mediaJsonResponse.RootElement.GetProperty("id").GetString();
 
             Thread.Sleep(30000);
-
-
-            var postUrl = $"https://graph.threads.net/v1.0/me/threads_publish?creation_id={mediaId}&access_token={_accessToken}";            
-
-            var postResponse = await _httpClient.PostAsync(postUrl, content);            
-            var postResponseString = await postResponse.Content.ReadAsStringAsync();
-            var postJsonResponse = JsonDocument.Parse(postResponseString);
-            mediaId = postJsonResponse.RootElement.GetProperty("id").GetString();
         }
     }
 }
