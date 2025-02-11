@@ -59,7 +59,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Threads
             var mediaJsonResponse = JsonDocument.Parse(mediaResponseString);
             string mediaId = mediaJsonResponse.RootElement.GetProperty("id").GetString();
 
-            Thread.Sleep(30000);
+            Thread.Sleep(10000);
         }
     }
 }
