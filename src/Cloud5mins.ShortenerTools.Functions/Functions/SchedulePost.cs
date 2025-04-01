@@ -76,7 +76,6 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                         await PostToBlueSky(item);
                         await PostToLinkedIn(item);
                         await PublishToMastodon(item);
-
                     }
                 }
             }
@@ -184,14 +183,16 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
                 List<Facet> facets = new List<Facet>();
 
-                var hashtags = BlueskyUtilities.ExtractHashtags(postTemplate);
-
-                foreach (var hashtag in hashtags)
+              
+                var tags = BlueskyUtilities.ExtractTags(postTemplate);
+                foreach (var tag in tags)
                 {
-                    (int hashtagStart, int hashtagEnd) = BlueskyUtilities.ParsePrompt(postTemplate, hashtag);
-                    facets.Add(Facet.CreateFacetHashtag(hashtagStart, hashtagEnd, hashtag.Replace("#", string.Empty)));
+                    facets.Add(Facet.CreateFacetHashtag(tag.start, tag.end + 1, tag.tag.Replace("#","")));
                 }
 
+                var facetUrl = (await BlueskyUtilities.ExtractUrls(postTemplate)).First();
+
+                facets.Add(Facet.CreateFacetLink(facetUrl.start, facetUrl.end, facetUrl.url));
 
                 var image = await BlueskyUtilities.UploadImage(shortUrl, atProtocol, facets, postTemplate);
 

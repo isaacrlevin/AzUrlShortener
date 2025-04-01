@@ -2,7 +2,6 @@
 using FishyFlip.Lexicon.App.Bsky.Embed;
 using FishyFlip.Lexicon.App.Bsky.Richtext;
 using FishyFlip.Models;
-using FishyFlip.Tools;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -14,45 +13,58 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
 {
     public static class BlueskyUtilities
     {
-        public static (int promptStart, int promptEnd) ParsePrompt(string haystack, string needle)
+        public static List<(int start, int end, string mention)> ExtractMentions(string text)
         {
-            int promptStart = haystack.IndexOf(needle, StringComparison.InvariantCulture);
-            int promptEnd = promptStart + Encoding.Default.GetBytes(needle).Length;
+            List<(int start, int end, string mention)> facets = new List<(int start, int end, string mention)>();
+            var mentionRegex = new Regex(@"[$|\W](@([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)", RegexOptions.Compiled);
+            var textBytes = Encoding.UTF8.GetBytes(text);
 
-            return (promptStart, promptEnd);
-        }
-
-        public static List<string> ExtractUrls(string input)
-        {
-            var urls = new List<string>();
-            var regex = new Regex(@"https?://[^\s/$.?#].[^\s]*");
-            var matches = regex.Matches(input);
-
-            foreach (Match match in matches)
+            foreach (Match m in mentionRegex.Matches(Encoding.UTF8.GetString(textBytes)))
             {
-                urls.Add(match.Value);
+                facets.Add((m.Index, m.Index + m.Length, m.Groups[1].Value));
             }
 
-            return urls;
+            return facets;
         }
 
-        public static List<string> ExtractHashtags(string post)
+        public static async Task<List<(int start, int end, string url)>> ExtractUrls(string text)
         {
-            var hashtags = new List<string>();
-            var regex = new Regex(@"#\w+");
-            var matches = regex.Matches(post);
+            List<(int start, int end, string url)> facets = new List<(int start, int end, string url)>();
 
-            foreach (Match match in matches)
+            var urlRegex = new Regex(@"[$|\W](https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*[-a-zA-Z0-9@%_\+~#//=])?)", RegexOptions.Compiled);
+            var textBytes = Encoding.UTF8.GetBytes(text);
+
+            foreach (Match m in urlRegex.Matches(Encoding.UTF8.GetString(textBytes)))
             {
-                hashtags.Add(match.Value);
+                facets.Add((m.Index, m.Index + m.Length, m.Groups[1].Value));
             }
 
-            return hashtags;
+            return facets;
+        }
+
+        public static List<(int start, int end, string tag)> ExtractTags(string text)
+        {
+            List<(int start, int end, string tag)> facets = new List<(int start, int end, string tag)>();
+            var hashtagRegex = new Regex(@"(?:^|\s)(#[^\d\s]\S*)(?=\s)?", RegexOptions.Compiled);
+            foreach (Match match in hashtagRegex.Matches(text))
+            {
+                string tag = match.Groups[1].Value;
+                bool hasLeadingSpace = Regex.IsMatch(tag, @"^\s");
+                tag = tag.Trim().TrimEnd('.', ',', ';', '!', '?');
+
+                if (tag.Length > 66) continue;
+
+                int index = match.Index + (hasLeadingSpace ? 1 : 0);
+
+                facets.Add((index, index + tag.Length, tag));
+            }
+
+            return facets;
         }
 
         public static async Task<ATDid> GetDid(string handle, ATProtocol atProtocol)
         {
-            var handleResolution = (await atProtocol.Identity.ResolveHandleAsync(ATHandle.Create(handle))).HandleResult();
+            var handleResolution = (await atProtocol.Identity.ResolveHandleAsync(ATHandle.Create(handle.Replace("@","")))).HandleResult();
             return handleResolution?.Did;
         }
 
@@ -100,9 +112,6 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
                                  alt: $"Embed Card for {url}"
                                 );
 
-                            (int promptStart, int promptEnd) = BlueskyUtilities.ParsePrompt(postTemplate, url);
-
-                            facets.Add(Facet.CreateFacetLink(promptStart, promptEnd, url));
                         },
                         async error =>
                         {
@@ -114,7 +123,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex.Message);
-                }                
+                }
             }
             return null;
         }
