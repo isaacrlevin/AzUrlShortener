@@ -71,14 +71,24 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                 contentLength += shortUrlTemplate.Length;
 
 
+                var systemPrompt = "You are a world class social media expert that creates engaging posts for various social media platforms. " +
+                    "You have a deep understanding of social media trends, audience engagement strategies, and content creation best practices. " +
+                    "Your goal is to craft compelling and concise social media posts that resonate with the target audience and drive engagement, " + 
+                    "that audience being developers.";
+
                 var message = @$"Create a professional social media post for this link with proper hastags. 
                                  Avoid unnecessary filler words such as 'unleash' or 'harness'
                                  Do not include the link in the response or the title of the page. Only return meaningful content regarding page referenced, 
-                                 nothing else in the response. The entire response should not exceed {280 - contentLength - 3} characters. {shortUrlRequest.Url}";
-                var chatResponse = await _client.CompleteAsync(message);
+                                 nothing else in the response. The entire response should not exceed {280 - contentLength - 5} characters. {shortUrlRequest.Url}";
+
+                var chatResponse = await _client.GetResponseAsync(
+                    [
+                    new(ChatRole.System, systemPrompt),
+                    new(ChatRole.User, message),
+                    ]);
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(chatResponse.Message.Text);
+                await response.WriteAsJsonAsync(chatResponse.Text);
 
                 return response;
             }

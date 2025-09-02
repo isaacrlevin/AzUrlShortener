@@ -124,11 +124,11 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         {
             try
             {
-                var text = $"{linkInfo.Title} \n {linkInfo.Message} \n\n {ShortenerBase}{linkInfo.RowKey}";
+                var text = $"{linkInfo.Title}\n {linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}";
 
                 if (text.Length > 280)
                 {
-                    text = $"{linkInfo.Title} \n\n {ShortenerBase}{linkInfo.RowKey}";
+                    text = $"{linkInfo.Title}\n\n{ShortenerBase}{linkInfo.RowKey}";
                 }
                 ITwitterResult tweetResult = await poster.PostTweet(
                     new TweetV2PostRequest
@@ -154,7 +154,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         {
             try
             {
-                var status = await mastodonClient.PublishStatus($"{linkInfo.Title} \n {linkInfo.Message} \n\n {ShortenerBase}{linkInfo.RowKey}", new Mastonet.Visibility?((Mastonet.Visibility)0), (string)null, (IEnumerable<string>)null, false, (string)null, new DateTime?(), (string)null, (PollParameters)null);
+                var status = await mastodonClient.PublishStatus($"{linkInfo.Title}\n{linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}", new Mastonet.Visibility?((Mastonet.Visibility)0), (string)null, (IEnumerable<string>)null, false, (string)null, new DateTime?(), (string)null, (PollParameters)null);
             }
             catch (Exception ex)
             {
@@ -176,7 +176,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
                 string shortUrl = $"{ShortenerBase}{linkInfo.RowKey}";
 
-                string postTemplate = $"{linkInfo.Title} \n {linkInfo.Message} \n\n {shortUrl}";
+                string postTemplate = $"{linkInfo.Title}\n{linkInfo.Message}\n\n{shortUrl}";
 
 
                 HttpClient client = new HttpClient();
@@ -238,7 +238,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             {
                 var user = await _linkedInManager.GetMyLinkedInUserProfile(_settings.LinkedInAccessToken);
 
-                var text = $"{linkInfo.Title} \n {linkInfo.Message} \n\n {ShortenerBase}{linkInfo.RowKey}";
+                var text = $"{linkInfo.Title}\n{linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}";
                 var id = await _linkedInManager.PostShareTextAndLink(_settings.LinkedInAccessToken, user.Sub, text, $"{ShortenerBase}{linkInfo.RowKey}");
             }
 
@@ -252,7 +252,7 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         {
             try
             {
-                var postTemplate = $"{linkInfo.Title} \n {linkInfo.Message} \n\n {ShortenerBase}{linkInfo.RowKey}";
+                var postTemplate = $"{linkInfo.Title}\n {linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}";
 
                 postTemplate = postTemplate.Replace("\r\n", " ");
 
