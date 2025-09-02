@@ -3,6 +3,7 @@ using Cloud5mins.ShortenerTools.Core.Domain.Socials.LinkedIn.Models;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials.Threads;
 using Cloud5mins.ShortenerTools.Functions;
 using LinkedIn;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Configuration;
@@ -37,7 +38,12 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ILinkedInManager, LinkedInManager>();
 builder.Services.AddSingleton<IThreadsManager, ThreadsManager>();
 builder.Services.AddSingleton<EmailService, EmailService>();
-
+builder.Services.AddOptions<KestrelServerOptions>()
+.Configure<IConfiguration>((settings, configuration) =>
+{
+    settings.AllowSynchronousIO = true;
+    configuration.Bind(settings);
+});
 
 builder.Logging.Services.Configure<LoggerFilterOptions>(options =>
 {
