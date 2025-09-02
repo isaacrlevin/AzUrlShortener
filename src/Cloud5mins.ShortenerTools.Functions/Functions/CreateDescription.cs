@@ -81,14 +81,14 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                                  Do not include the link in the response or the title of the page. Only return meaningful content regarding page referenced, 
                                  nothing else in the response. The entire response should not exceed {280 - contentLength - 5} characters. {shortUrlRequest.Url}";
 
-                var chatResponse = await _client.GetResponseAsync(
+                var chatResponse = await _client.CompleteAsync(
                     [
                     new(ChatRole.System, systemPrompt),
                     new(ChatRole.User, message),
                     ]);
 
                 var response = req.CreateResponse(HttpStatusCode.OK);
-                await response.WriteAsJsonAsync(chatResponse.Text);
+                await response.WriteAsJsonAsync(chatResponse.Message.Text);
 
                 return response;
             }
