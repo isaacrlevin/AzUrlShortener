@@ -57,7 +57,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
 
             foreach (ShortUrlEntity qEntity in queryResultsLINQ)
             {
-                qEntity.ClickCount = stats.Where(a => a.PartitionKey == qEntity.RowKey).Count();
+                //qEntity.ClickCount = stats.Where(a => a.PartitionKey == qEntity.RowKey).Count();
                 lstShortUrl.AddRange(qEntity);
             }
 
