@@ -17,399 +17,405 @@
 
 @if (urls.UrlList == null)
 {
-    <p><em>Loading...</em></p>
+	<p><em>Loading...</em></p>
 }
 else
 {
-    <button class="btn btn-primary" @onclick="CreateShortUrl">Add New Url</button>
+	<button class="btn btn-primary" @onclick="CreateShortUrl">Add New Url</button>
 
-    <SfGrid DataSource="@urls.UrlList" id="grdUrls" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
-        <GridPageSettings PageSize="15"></GridPageSettings>
-        <GridColumns>
-            <GridColumn Field=@nameof(ShortUrlEntity.Timestamp) HeaderText="Timestamp" Format="d" Type="ColumnType.Date" TextAlign="TextAlign.Right" Width="130"></GridColumn>
-            <GridColumn Width="70" AllowFiltering="false">
-                <Template>
-                    @{
-                        var url = (context as ShortUrlEntity);
-                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => CopyToClipboardAsync(url.ShortUrl))">Copy</button>
-                    }
-                </Template>
-            </GridColumn>
-            <GridColumn Width="250" Field=@nameof(ShortUrlEntity.RowKey) HeaderText="Vanity">
-                <Template>
-                    @{
-                        var url = (context as ShortUrlEntity);
-                        <a href="@url.ShortUrl" target="blank">@url.RowKey</a>
-                    }
-                </Template>
-            </GridColumn>
-            <GridColumn Field=@nameof(ShortUrlEntity.Title) HeaderText="Title"></GridColumn>
-            <GridColumn Field=@nameof(ShortUrlEntity.Url) HeaderText="Url"></GridColumn>
-            @* <GridColumn Width="100" Field=@nameof(ShortUrlEntity.ClickCount) HeaderText="Clicks"></GridColumn> *@
-            <GridColumn Width="100" TextAlign="TextAlign.Right" HeaderText="Statistics">
-                <Template>
-                    @{
-                        var url = (context as ShortUrlEntity);
-                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() =>
-                        NavigateToStats(url.RowKey))">
-                            📊
-                        </button>
-                    }
-                </Template>
-            </GridColumn>
-            <GridColumn Width="120">
-                <Template>
-                    @{
-                        var url = (context as ShortUrlEntity);
-                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => EditShortUrl(url))">Edit</button>
-                        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => ArchiveShortUrl(url))">Archive</button>
-                    }
-                </Template>
-            </GridColumn>
-        </GridColumns>
-    </SfGrid>
+	<SfSpinner @bind-Visible="@VisibleProperty">
+		<SfGrid DataSource="@urls.UrlList" id="grdUrls" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+			<GridPageSettings PageSize="15"></GridPageSettings>
+			<GridColumns>
+				<GridColumn Field=@nameof(ShortUrlEntity.Timestamp) HeaderText="Timestamp" Format="d" Type="ColumnType.Date" TextAlign="TextAlign.Right" Width="130"></GridColumn>
+				<GridColumn Width="70" AllowFiltering="false">
+					<Template>
+						@{
+							var url = (context as ShortUrlEntity);
+							<button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => CopyToClipboardAsync(url.ShortUrl))">Copy</button>
+						}
+					</Template>
+				</GridColumn>
+				<GridColumn Width="250" Field=@nameof(ShortUrlEntity.RowKey) HeaderText="Vanity">
+					<Template>
+						@{
+							var url = (context as ShortUrlEntity);
+							<a href="@url.ShortUrl" target="blank">@url.RowKey</a>
+						}
+					</Template>
+				</GridColumn>
+				<GridColumn Field=@nameof(ShortUrlEntity.Title) HeaderText="Title"></GridColumn>
+				<GridColumn Field=@nameof(ShortUrlEntity.Url) HeaderText="Url"></GridColumn>
+				@* <GridColumn Width="100" Field=@nameof(ShortUrlEntity.ClickCount) HeaderText="Clicks"></GridColumn> *@
+				<GridColumn Width="100" TextAlign="TextAlign.Right" HeaderText="Statistics">
+					<Template>
+						@{
+							var url = (context as ShortUrlEntity);
+							<button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() =>
+																										 																  NavigateToStats(url.RowKey))">
+						📊
+					</button>
+										}
+					</Template>
+				</GridColumn>
+				<GridColumn Width="120">
+					<Template>
+						@{
+							var url = (context as ShortUrlEntity);
+							<button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => EditShortUrl(url))">Edit</button>
+							<button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => ArchiveShortUrl(url))">Archive</button>
+						}
+					</Template>
+				</GridColumn>
+			</GridColumns>
+		</SfGrid>
+	</SfSpinner>
 }
-
 
 @if (ShowCreatePopup)
 {
-    <div class="modal fade show" id="createPopup" style="display:block" aria-modal="true" role="dialog">
-        <div class="modal-dialog">
-            <div class="modal-content">
+	<div class="modal fade show" id="createPopup" style="display:block" aria-modal="true" role="dialog">
+		<div class="modal-dialog">
+			<div class="modal-content">
 
-                <!-- Modal Header -->
-                <div class="modal-header">
-                    <h4 class="modal-title">Short Url Request</h4>
-                    <button type="button" class="close" @onclick="@ClosePopup">&times;</button>
-                </div>
+				<!-- Modal Header -->
+				<div class="modal-header">
+					<h4 class="modal-title">Short Url Request</h4>
+					<button type="button" class="close" @onclick="@ClosePopup">&times;</button>
+				</div>
 
-                <!-- Modal body -->
-                <div class="modal-body">
-                    <EditForm OnValidSubmit="SaveShortUrl" EditContext="editContext" FormName="UrlManager">
-                        <DataAnnotationsValidator />
-                        <ValidationSummary />
-                        <div class="row">
-                            <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
-                                <SfTextBox id="title" Placeholder="Title" FloatLabelType="@FloatLabelType.Auto" @oninput="@((e) => GetCharacterCount(e, "title"))"
-                                @bind-Value="shortUrlRequest.Title"></SfTextBox>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
-                                <SfTextBox id="url" Placeholder="Url" FloatLabelType="@FloatLabelType.Auto" Width="400px"
-                                @bind-Value="shortUrlRequest.Url"></SfTextBox>  <button disabled="@IsUrlEmpty" type="button" class="btn" style="margin-top: 24px" @onclick=@Generate>
-                                    @if (isLoading)
-                                    {
-                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                    }
-                                    else
-                                    {
-                                        <span class="magic-wand" aria-hidden="true"></span>
-                                    }
-                                </button>
-                                <ValidationMessage For="@(() => shortUrlRequest.Url)" />
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
-                                <SfTextBox id="message" Placeholder="Message" Width="400px" FloatLabelType="@FloatLabelType.Auto" Multiline="true" @oninput="@((e) => GetCharacterCount(e, "message"))"
-                                @bind-Value="shortUrlRequest.Message"></SfTextBox>
-                                <ValidationMessage For="@(() => shortUrlRequest.Message)" />
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
-                                Character Count: @characterCount
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
-                                <SfTextBox id="vanity" Placeholder="Vanity" FloatLabelType="@FloatLabelType.Auto"
-                                @bind-Value="shortUrlRequest.Vanity"></SfTextBox>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
-                                <SfCheckBox id="posttosocial" Label="Post to Social" FloatLabelType="@FloatLabelType.Auto"
-                                @bind-Checked="shortUrlRequest.PostToSocial"></SfCheckBox>
-                            </div>
-                        </div>
-                        <!-- Modal footer -->
-                        <div class="modal-footer">
-                            <button type="button" class="btn" @onclick="@ClosePopup">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save</button>
-                        </div>
-                    </EditForm>
-                </div>
-            </div>
-        </div>
-    </div>
+				<!-- Modal body -->
+				<div class="modal-body">
+					<EditForm OnValidSubmit="SaveShortUrl" EditContext="editContext" FormName="UrlManager">
+						<DataAnnotationsValidator />
+						<ValidationSummary />
+						<div class="row">
+							<div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
+								<SfTextBox id="title" Placeholder="Title" FloatLabelType="@FloatLabelType.Auto" @oninput="@((e) => GetCharacterCount(e, "title"))"
+										   @bind-Value="shortUrlRequest.Title"></SfTextBox>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
+								<SfTextBox id="url" Placeholder="Url" FloatLabelType="@FloatLabelType.Auto" Width="400px"
+										   @bind-Value="shortUrlRequest.Url"></SfTextBox>  <button disabled="@IsUrlEmpty" type="button" class="btn" style="margin-top: 24px" @onclick=@Generate>
+									@if (isLoading)
+									{
+										<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+									}
+									else
+									{
+										<span class="magic-wand" aria-hidden="true"></span>
+									}
+								</button>
+								<ValidationMessage For="@(() => shortUrlRequest.Url)" />
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
+								<SfTextBox id="message" Placeholder="Message" Width="400px" FloatLabelType="@FloatLabelType.Auto" Multiline="true" @oninput="@((e) => GetCharacterCount(e, "message"))"
+										   @bind-Value="shortUrlRequest.Message"></SfTextBox>
+								<ValidationMessage For="@(() => shortUrlRequest.Message)" />
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
+								Character Count: @characterCount
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
+								<SfTextBox id="vanity" Placeholder="Vanity" FloatLabelType="@FloatLabelType.Auto"
+										   @bind-Value="shortUrlRequest.Vanity"></SfTextBox>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
+								<SfCheckBox id="posttosocial" Label="Post to Social" FloatLabelType="@FloatLabelType.Auto"
+											@bind-Checked="shortUrlRequest.PostToSocial"></SfCheckBox>
+							</div>
+						</div>
+						<!-- Modal footer -->
+						<div class="modal-footer">
+							<button type="button" class="btn" @onclick="@ClosePopup">Cancel</button>
+							<button type="submit" class="btn btn-primary">Save</button>
+						</div>
+					</EditForm>
+				</div>
+			</div>
+		</div>
+	</div>
 }
 
 @if (ShowEditPopup)
 {
-    <div class="modal fade show" id="myModal" style="display:block" aria-modal="true" role="dialog">
-        <div class="modal-dialog">
-            <div class="modal-content">
+	<div class="modal fade show" id="myModal" style="display:block" aria-modal="true" role="dialog">
+		<div class="modal-dialog">
+			<div class="modal-content">
 
-                <!-- Modal Header -->
-                <div class="modal-header">
-                    <h4 class="modal-title">Confirm action</h4>
-                    <button type="button" class="close" @onclick="@ClosePopup">&times;</button>
-                </div>
+				<!-- Modal Header -->
+				<div class="modal-header">
+					<h4 class="modal-title">Confirm action</h4>
+					<button type="button" class="close" @onclick="@ClosePopup">&times;</button>
+				</div>
 
-                <!-- Modal body -->
-                <div class="modal-body">
-                    <EditForm Model="editedUrl" OnValidSubmit="SaveUpdatedShortUrl">
-                        <DataAnnotationsValidator />
-                        <div>
-                            <label for="edit-title">Title</label>
-                            <InputText id="edit-title" class="form-control" placeholder="Title or description for this URL" @bind-Value="editedUrl.Title" />
-                            <ValidationMessage For="@(() => editedUrl.Title)" />
-                        </div>
-                        <br />
-                        <div>
-                            <label for="edit-message">Message</label>
-                            <InputTextArea id="edit-message" class="form-control" placeholder="Message" @bind-Value="editedUrl.Message" />
-                            <ValidationMessage For="@(() => editedUrl.Message)" />
-                        </div>
-                        <br />
-                        <div>
-                            <label for="edit-url">The Url to redirect</label>
-                            <InputText id="edit-url" class="form-control" placeholder="The Url to redirect" @bind-Value="editedUrl.Url" />
-                            <ValidationMessage For="@(() => editedUrl.Url)" />
-                        </div>
-                    </EditForm>
-                </div>
+				<!-- Modal body -->
+				<div class="modal-body">
+					<EditForm Model="editedUrl" OnValidSubmit="SaveUpdatedShortUrl">
+						<DataAnnotationsValidator />
+						<div>
+							<label for="edit-title">Title</label>
+							<InputText id="edit-title" class="form-control" placeholder="Title or description for this URL" @bind-Value="editedUrl.Title" />
+							<ValidationMessage For="@(() => editedUrl.Title)" />
+						</div>
+						<br />
+						<div>
+							<label for="edit-message">Message</label>
+							<InputTextArea id="edit-message" class="form-control" placeholder="Message" @bind-Value="editedUrl.Message" />
+							<ValidationMessage For="@(() => editedUrl.Message)" />
+						</div>
+						<br />
+						<div>
+							<label for="edit-url">The Url to redirect</label>
+							<InputText id="edit-url" class="form-control" placeholder="The Url to redirect" @bind-Value="editedUrl.Url" />
+							<ValidationMessage For="@(() => editedUrl.Url)" />
+						</div>
+					</EditForm>
+				</div>
 
-                <!-- Modal footer -->
-                <div class="modal-footer">
-                    <button type="button" class="btn" @onclick="@ClosePopup">Cancel</button>
-                    <button type="button" class="btn btn-primary" @onclick=@SaveUpdatedShortUrl>Save</button>
-                </div>
+				<!-- Modal footer -->
+				<div class="modal-footer">
+					<button type="button" class="btn" @onclick="@ClosePopup">Cancel</button>
+					<button type="button" class="btn btn-primary" @onclick=@SaveUpdatedShortUrl>Save</button>
+				</div>
 
-            </div>
-        </div>
-    </div>
+			</div>
+		</div>
+	</div>
 
 }
 
 @code {
 
-    bool ShowCreatePopup = false;
-    bool ShowEditPopup = false;
-    private ListResponse urls = new ListResponse();
+	bool ShowCreatePopup = false;
+	bool ShowEditPopup = false;
+	private ListResponse urls = new ListResponse();
 
-    [SupplyParameterFromForm]
-    ShortUrlRequest? shortUrlRequest { get; set; }
-    EditContext? editContext;
-    ValidationMessageStore? messageStore;
+	[SupplyParameterFromForm]
+	ShortUrlRequest? shortUrlRequest { get; set; }
+	EditContext? editContext;
+	ValidationMessageStore? messageStore;
 
-    ShortUrlEntity editedUrl;
-    SfGrid<ShortUrlEntity> grdUrls;
-    public List<ShortUrlEntity> gridData { get; set; }
-    private bool isLoading = false;
-    ClaimsPrincipal User;
+	ShortUrlEntity editedUrl;
+	SfGrid<ShortUrlEntity> grdUrls;
+	public List<ShortUrlEntity> gridData { get; set; }
+	private bool isLoading = false;
+	ClaimsPrincipal User;
 
-    int characterCount = 0;
+	int characterCount = 0;
 
-    private bool IsUrlEmpty => string.IsNullOrEmpty(shortUrlRequest.Url);
-    protected override async Task OnInitializedAsync()
-    {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        User = authState.User;
+	private bool IsUrlEmpty => string.IsNullOrEmpty(shortUrlRequest.Url);
+	protected override async Task OnInitializedAsync()
+	{
+		var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+		User = authState.User;
 
-        if (User.IsInRole("admin") || Debugger.IsAttached)
-        {
-            await RefreshGrid();
-        }
-        else
-        {
-            NavigationManager.NavigateTo("/unauthorized");
-        }
-    }
+		if (User.IsInRole("admin") || Debugger.IsAttached)
+		{
+			await RefreshGrid();
+		}
+		else
+		{
+			NavigationManager.NavigateTo("/unauthorized");
+		}
+	}
 
-    private void HandleValidationRequested(object? sender,
-    ValidationRequestedEventArgs args)
-    {
-        messageStore?.Clear();
+	private bool VisibleProperty { get; set; } = false;
 
-        ValidateCharacterCount();
+	private void HandleValidationRequested(object? sender,
+	ValidationRequestedEventArgs args)
+	{
+		messageStore?.Clear();
 
-    }
-    private async Task RefreshGrid()
-    {
-        try
-        {
-            using var response = await Http.GetAsync("/api/UrlList");
-            if (response.IsSuccessStatusCode)
-            {
-                urls = await response.Content.ReadFromJsonAsync<ListResponse>();
-                urls.UrlList = urls.UrlList.OrderByDescending(x => x.Timestamp).ToList();
-            }
-            else
-            {
-                switch (response.StatusCode)
-                {
-                    case HttpStatusCode.Unauthorized:
-                        NavigationManager.NavigateTo("/unauthorized");
-                        break;
-                    default:
-                        NavigationManager.NavigateTo("/404");
-                        break;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex.ToString());
-        }
-    }
+		ValidateCharacterCount();
 
-    private void GetCharacterCount(Microsoft.AspNetCore.Components.ChangeEventArgs e, string sender)
-    {        
-        if (sender == "title")
-        {
-            characterCount = 25 + shortUrlRequest.Message.Length + e.Value.ToString().Length;
-        }
-        else if (sender == "message")
-        {
-            characterCount = 25 + shortUrlRequest.Title.Length + e.Value.ToString().Length;
-        }
-        ValidateCharacterCount();
-    }
+	}
+	private async Task RefreshGrid()
+	{
+		try
+		{
+			using var response = await Http.GetAsync("/api/UrlList");
+			if (response.IsSuccessStatusCode)
+			{
+				urls = await response.Content.ReadFromJsonAsync<ListResponse>();
+				urls.UrlList = urls.UrlList.OrderByDescending(x => x.Timestamp).ToList();
+			}
+			else
+			{
+				switch (response.StatusCode)
+				{
+					case HttpStatusCode.Unauthorized:
+						NavigationManager.NavigateTo("/unauthorized");
+						break;
+					default:
+						NavigationManager.NavigateTo("/404");
+						break;
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex.ToString());
+		}
+	}
 
-    private void ValidateCharacterCount()
-    {
-        messageStore.Clear();
+	private void GetCharacterCount(Microsoft.AspNetCore.Components.ChangeEventArgs e, string sender)
+	{
+		if (sender == "title")
+		{
+			characterCount = 25 + shortUrlRequest.Message.Length + e.Value.ToString().Length;
+		}
+		else if (sender == "message")
+		{
+			characterCount = 25 + shortUrlRequest.Title.Length + e.Value.ToString().Length;
+		}
+		ValidateCharacterCount();
+	}
 
-        if (characterCount > 239)
-        {
-            messageStore.Add(() => characterCount, "Character count must be 239 or less.");
-        }
+	private void ValidateCharacterCount()
+	{
+		messageStore.Clear();
 
-        editContext.NotifyValidationStateChanged();
-    }
+		if (characterCount > 239)
+		{
+			messageStore.Add(() => characterCount, "Character count must be 239 or less.");
+		}
 
-    private async Task UpdateUIList()
-    {
-        await RefreshGrid();
-        StateHasChanged();
-    }
+		editContext.NotifyValidationStateChanged();
+	}
 
-    private async Task SaveShortUrl()
-    {
-        ShowCreatePopup = false;
+	private async Task UpdateUIList()
+	{
+		VisibleProperty = true;
+		await RefreshGrid();
+		VisibleProperty = false;
+		StateHasChanged();
+	}
 
-        try
-        {
-            await Http.PostAsJsonAsync<ShortUrlRequest>("/api/UrlCreate", shortUrlRequest);
-            await UpdateUIList();
-            shortUrlRequest = new ShortUrlRequest();
-        }
-        catch (System.Exception ex)
-        {
-            Logger.LogError(ex.ToString());
-        }
-    }
-
-
-
-    private async Task Generate()
-    {
-        if (!string.IsNullOrEmpty(shortUrlRequest.Url))
-        {
-            isLoading = true;
-            try
-            {
-                using var response = await Http.PostAsJsonAsync<ShortUrlRequest>("/api/CreateDescription", shortUrlRequest);
-                if (response.IsSuccessStatusCode)
-                {
-                    var message = await response.Content.ReadFromJsonAsync<string>();
-                    shortUrlRequest.Message = message.Replace("\"", string.Empty);
-                    isLoading = false;
-                }
-                else
-                {
-                    switch (response.StatusCode)
-                    {
-                        case HttpStatusCode.Unauthorized:
-                            NavigationManager.NavigateTo("/unauthorized");
-                            break;
-                        default:
-                            NavigationManager.NavigateTo("/404");
-                            break;
-                    }
-                }
-            }
-            catch (System.Exception ex)
-            {
-                isLoading = false;
-                Logger.LogError(ex.ToString());
-            }
-            StateHasChanged();
-        }
-    }
-
-    void ClosePopup()
-    {
-        ShowCreatePopup = false;
-        ShowEditPopup = false;
-    }
-
-    void CreateShortUrl()
-    {
-        if (User.IsInRole("admin") || Debugger.IsAttached)
-        {
-            ShowCreatePopup = true;
-            shortUrlRequest ??= new();
-            editContext = new(shortUrlRequest);
-            messageStore = new(editContext);
-            editContext.OnFieldChanged += HandleFieldChanged;
-            editContext.OnValidationRequested += HandleValidationRequested;
-        }
-    }
-
-    [Inject] public IJSRuntime JsRuntime { get; set; }
-    public async Task CopyToClipboardAsync(string url)
-    {
-        await JSRuntime.InvokeVoidAsync("clipboardCopy.copyText", url);
-    }
+	private async Task SaveShortUrl()
+	{
+		ShowCreatePopup = false;
+		VisibleProperty = true;
+		try
+		{
+			await Http.PostAsJsonAsync<ShortUrlRequest>("/api/UrlCreate", shortUrlRequest);
+			await UpdateUIList();
+			shortUrlRequest = new ShortUrlRequest();
+		}
+		catch (System.Exception ex)
+		{
+			Logger.LogError(ex.ToString());
+		}
+		VisibleProperty = false;
+	}
 
 
-    void EditShortUrl(ShortUrlEntity urlEntity)
-    {
-        editedUrl = urlEntity;
-        ShowEditPopup = true;
-    }
 
-    private async Task SaveUpdatedShortUrl()
-    {
-        ShowEditPopup = false;
-        await Http.PostAsJsonAsync<ShortUrlEntity>("/api/UrlUpdate", editedUrl);
-        await UpdateUIList();
-    }
+	private async Task Generate()
+	{
+		if (!string.IsNullOrEmpty(shortUrlRequest.Url))
+		{
+			isLoading = true;
+			try
+			{
+				using var response = await Http.PostAsJsonAsync<ShortUrlRequest>("/api/CreateDescription", shortUrlRequest);
+				if (response.IsSuccessStatusCode)
+				{
+					var message = await response.Content.ReadFromJsonAsync<string>();
+					shortUrlRequest.Message = message.Replace("\"", string.Empty);
+					isLoading = false;
+				}
+				else
+				{
+					switch (response.StatusCode)
+					{
+						case HttpStatusCode.Unauthorized:
+							NavigationManager.NavigateTo("/unauthorized");
+							break;
+						default:
+							NavigationManager.NavigateTo("/404");
+							break;
+					}
+				}
+			}
+			catch (System.Exception ex)
+			{
+				isLoading = false;
+				Logger.LogError(ex.ToString());
+			}
+			StateHasChanged();
+		}
+	}
 
-    private void NavigateToStats(string vanity)
-    {
-        NavigationManager.NavigateTo("/Statistics/" + vanity);
-    }
+	void ClosePopup()
+	{
+		ShowCreatePopup = false;
+		ShowEditPopup = false;
+	}
 
-    public async Task ArchiveShortUrl(ShortUrlEntity urlEntity)
-    {
-        await Http.PostAsJsonAsync<ShortUrlEntity>("/api/UrlArchive", urlEntity);
-        await UpdateUIList();
-    }
+	void CreateShortUrl()
+	{
+		if (User.IsInRole("admin") || Debugger.IsAttached)
+		{
+			ShowCreatePopup = true;
+			shortUrlRequest ??= new();
+			editContext = new(shortUrlRequest);
+			messageStore = new(editContext);
+			editContext.OnFieldChanged += HandleFieldChanged;
+			editContext.OnValidationRequested += HandleValidationRequested;
+		}
+	}
 
-    private void HandleFieldChanged(object sender, FieldChangedEventArgs e)
-    {
-        ValidateCharacterCount();
-    }
-    public void Dispose()
-    {
-        if (editContext is not null)
-        {
-            editContext.OnValidationRequested -= HandleValidationRequested;
-        }
-    }
+	[Inject] public IJSRuntime JsRuntime { get; set; }
+	public async Task CopyToClipboardAsync(string url)
+	{
+		await JSRuntime.InvokeVoidAsync("clipboardCopy.copyText", url);
+	}
+
+
+	void EditShortUrl(ShortUrlEntity urlEntity)
+	{
+		editedUrl = urlEntity;
+		ShowEditPopup = true;
+	}
+
+	private async Task SaveUpdatedShortUrl()
+	{
+		ShowEditPopup = false;
+		await Http.PostAsJsonAsync<ShortUrlEntity>("/api/UrlUpdate", editedUrl);
+		await UpdateUIList();
+	}
+
+	private void NavigateToStats(string vanity)
+	{
+		NavigationManager.NavigateTo("/Statistics/" + vanity);
+	}
+
+	public async Task ArchiveShortUrl(ShortUrlEntity urlEntity)
+	{
+		await Http.PostAsJsonAsync<ShortUrlEntity>("/api/UrlArchive", urlEntity);
+		await UpdateUIList();
+	}
+
+	private void HandleFieldChanged(object sender, FieldChangedEventArgs e)
+	{
+		ValidateCharacterCount();
+	}
+	public void Dispose()
+	{
+		if (editContext is not null)
+		{
+			editContext.OnValidationRequested -= HandleValidationRequested;
+		}
+	}
 }
