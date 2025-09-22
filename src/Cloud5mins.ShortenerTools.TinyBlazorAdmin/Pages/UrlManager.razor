@@ -22,54 +22,61 @@
 else
 {
 	<button class="btn btn-primary" @onclick="CreateShortUrl">Add New Url</button>
-
-	<SfSpinner @bind-Visible="@VisibleProperty">
-		<SfGrid DataSource="@urls.UrlList" id="grdUrls" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
-			<GridPageSettings PageSize="15"></GridPageSettings>
-			<GridColumns>
-				<GridColumn Field=@nameof(ShortUrlEntity.Timestamp) HeaderText="Timestamp" Format="d" Type="ColumnType.Date" TextAlign="TextAlign.Right" Width="130"></GridColumn>
-				<GridColumn Width="70" AllowFiltering="false">
-					<Template>
-						@{
-							var url = (context as ShortUrlEntity);
-							<button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => CopyToClipboardAsync(url.ShortUrl))">Copy</button>
-						}
-					</Template>
-				</GridColumn>
-				<GridColumn Width="250" Field=@nameof(ShortUrlEntity.RowKey) HeaderText="Vanity">
-					<Template>
-						@{
-							var url = (context as ShortUrlEntity);
-							<a href="@url.ShortUrl" target="blank">@url.RowKey</a>
-						}
-					</Template>
-				</GridColumn>
-				<GridColumn Field=@nameof(ShortUrlEntity.Title) HeaderText="Title"></GridColumn>
-				<GridColumn Field=@nameof(ShortUrlEntity.Url) HeaderText="Url"></GridColumn>
-				@* <GridColumn Width="100" Field=@nameof(ShortUrlEntity.ClickCount) HeaderText="Clicks"></GridColumn> *@
-				<GridColumn Width="100" TextAlign="TextAlign.Right" HeaderText="Statistics">
-					<Template>
-						@{
-							var url = (context as ShortUrlEntity);
-							<button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() =>
-																										 																  NavigateToStats(url.RowKey))">
-						📊
-					</button>
-										}
-					</Template>
-				</GridColumn>
-				<GridColumn Width="120">
-					<Template>
-						@{
-							var url = (context as ShortUrlEntity);
-							<button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => EditShortUrl(url))">Edit</button>
-							<button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => ArchiveShortUrl(url))">Archive</button>
-						}
-					</Template>
-				</GridColumn>
-			</GridColumns>
-		</SfGrid>
-	</SfSpinner>
+		<SpinLoader IsLoading="VisibleProperty">
+		<LoadingTemplate>
+			<div style="height:400px; position:relative; ">
+				<Circle style=" margin: 0; position: absolute; top: 50%; left: 50%; -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);"
+						Center="true" />
+			</div>
+		</LoadingTemplate>
+		<ContentTemplate>
+			<SfGrid DataSource="@urls.UrlList" id="grdUrls" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+				<GridPageSettings PageSize="15"></GridPageSettings>
+				<GridColumns>
+					<GridColumn Field=@nameof(ShortUrlEntity.Timestamp) HeaderText="Timestamp" Format="d" Type="ColumnType.Date" TextAlign="TextAlign.Right" Width="130"></GridColumn>
+					<GridColumn Width="70" AllowFiltering="false">
+						<Template>
+							@{
+								var url = (context as ShortUrlEntity);
+								<button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => CopyToClipboardAsync(url.ShortUrl))">Copy</button>
+							}
+						</Template>
+					</GridColumn>
+					<GridColumn Width="250" Field=@nameof(ShortUrlEntity.RowKey) HeaderText="Vanity">
+						<Template>
+							@{
+								var url = (context as ShortUrlEntity);
+								<a href="@url.ShortUrl" target="blank">@url.RowKey</a>
+							}
+						</Template>
+					</GridColumn>
+					<GridColumn Field=@nameof(ShortUrlEntity.Title) HeaderText="Title"></GridColumn>
+					<GridColumn Field=@nameof(ShortUrlEntity.Url) HeaderText="Url"></GridColumn>
+					@* <GridColumn Width="100" Field=@nameof(ShortUrlEntity.ClickCount) HeaderText="Clicks"></GridColumn> *@
+					<GridColumn Width="100" TextAlign="TextAlign.Right" HeaderText="Statistics">
+						<Template>
+							@{
+								var url = (context as ShortUrlEntity);
+								<button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() =>
+																																																																															   NavigateToStats(url.RowKey))">
+							📊
+						</button>
+												}
+						</Template>
+					</GridColumn>
+					<GridColumn Width="120">
+						<Template>
+							@{
+								var url = (context as ShortUrlEntity);
+								<button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => EditShortUrl(url))">Edit</button>
+								<button type="button" class="btn btn-outline-primary btn-sm" @onclick="@(() => ArchiveShortUrl(url))">Archive</button>
+							}
+						</Template>
+					</GridColumn>
+				</GridColumns>
+			</SfGrid>
+		</ContentTemplate>
+	</SpinLoader>
 }
 
 @if (ShowCreatePopup)

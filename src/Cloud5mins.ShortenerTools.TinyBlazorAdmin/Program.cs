@@ -22,4 +22,5 @@ builder.Services
 Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("NzYyMzI1QDMyMzAyZTMxMmUzMFY0cEZ3MVozdkwvekVhek8xTWdPMkg2NlhvdVFNR1lvZHdhQWJWUlNjZW89"); 
 builder.Services.AddSyncfusionBlazor();
 
+
 await builder.Build().RunAsync();
