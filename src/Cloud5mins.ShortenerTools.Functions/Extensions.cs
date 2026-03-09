@@ -19,6 +19,7 @@ namespace Cloud5mins.ShortenerTools.Functions
         {
             var inAspire = bool.Parse(Environment.GetEnvironmentVariable("IN_ASPIRE") ?? "False");
             var useOllama = bool.Parse(Environment.GetEnvironmentVariable("USE_OLLAMA") ?? "False");
+            var deployment = Environment.GetEnvironmentVariable("DeploymentName") ?? "gpt-4o-mini";
 
             IChatClient chatClient = null;
 
@@ -26,13 +27,13 @@ namespace Cloud5mins.ShortenerTools.Functions
             {
                 if (useOllama)
                 {
-                    builder.AddKeyedOllamaSharpChatClient("chat");
+                    builder.AddKeyedOllamaApiClient("chat");
                     chatClient = builder.Services.BuildServiceProvider().GetRequiredKeyedService<IChatClient>("chat");
                 }
                 else
                 {
                     builder.AddKeyedAzureOpenAIClient("chat");
-                    chatClient = builder.Services.BuildServiceProvider().GetRequiredKeyedService<OpenAIClient>("chat").AsChatClient("gpt-4o-mini");
+                    chatClient = builder.Services.BuildServiceProvider().GetRequiredKeyedService<OpenAIClient>("chat").GetChatClient(deployment).AsIChatClient();
                 }
             }
             else
@@ -46,7 +47,7 @@ namespace Cloud5mins.ShortenerTools.Functions
                 }
                 else
                 {
-                    chatClient = new AzureOpenAIClient(new Uri(endpoint), new ApiKeyCredential(key)).AsChatClient("gpt-4o-mini");
+                    chatClient = new AzureOpenAIClient(new Uri(endpoint), new ApiKeyCredential(key)).GetChatClient(deployment).AsIChatClient();
                 }
             }
 

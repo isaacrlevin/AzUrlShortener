@@ -81,14 +81,14 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             }
         }
 
-        [Function("SchedulePostTimer")]
-        public async Task SchedulePostTimer([TimerTrigger("0 0 13,16,19,23 * * 1-5")] TimerInfo myTimer)
-        {
-            if (!Debugger.IsAttached)
-            {
-                await PublishToSocial();
-            }
-        }
+        //[Function("SchedulePostTimer")]
+        //public async Task SchedulePostTimer([TimerTrigger("0 0 13,16,19,23 * * 1-5")] TimerInfo myTimer)
+        //{
+        //    if (!Debugger.IsAttached)
+        //    {
+        //        await PublishToSocial();
+        //    }
+        //}
 
         [Function("SchedulePostHttp")]
         public async Task SchedulePostHttp([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/SchedulePost")] HttpRequestData req, ExecutionContext context)
