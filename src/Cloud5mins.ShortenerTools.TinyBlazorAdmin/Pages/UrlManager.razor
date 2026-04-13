@@ -30,7 +30,8 @@ else
 			</div>
 		</LoadingTemplate>
 		<ContentTemplate>
-			<SfGrid DataSource="@urls.UrlList" id="grdUrls" AllowPaging="true" AllowSorting="true" AllowFiltering="true">
+			<SfGrid DataSource="@urls.UrlList" id="grdUrls" AllowPaging="true" AllowSorting="true" AllowFiltering="true" @ref="grdUrls">
+				<GridEvents TValue="ShortUrlEntity" OnActionBegin="ActionBeginHandler"></GridEvents>
 				<GridPageSettings PageSize="15"></GridPageSettings>
 				<GridColumns>
 					<GridColumn Field=@nameof(ShortUrlEntity.Timestamp) HeaderText="Timestamp" Format="d" Type="ColumnType.Date" TextAlign="TextAlign.Right" Width="130"></GridColumn>
@@ -207,6 +208,10 @@ else
 	bool ShowCreatePopup = false;
 	bool ShowEditPopup = false;
 	private ListResponse urls = new ListResponse();
+	private List<ShortUrlEntity> allLoadedUrls = new List<ShortUrlEntity>();
+	private int currentSkip = 0;
+	private int pageSize = 100;
+	private int totalCount = 0;
 
 	[SupplyParameterFromForm]
 	ShortUrlRequest? shortUrlRequest { get; set; }
@@ -229,7 +234,7 @@ else
 
 		if (User.IsInRole("admin") || Debugger.IsAttached)
 		{
-			await RefreshGrid();
+			await LoadInitialUrls();
 		}
 		else
 		{
@@ -239,23 +244,37 @@ else
 
 	private bool VisibleProperty { get; set; } = false;
 
-	private void HandleValidationRequested(object? sender,
-	ValidationRequestedEventArgs args)
-	{
-		messageStore?.Clear();
-
-		ValidateCharacterCount();
-
-	}
-	private async Task RefreshGrid()
+	private async Task LoadInitialUrls()
 	{
 		try
 		{
-			using var response = await Http.GetAsync("/api/UrlList");
+			currentSkip = 0;
+			allLoadedUrls.Clear();
+			await LoadMoreUrls();
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex.ToString());
+		}
+	}
+
+	private async Task LoadMoreUrls()
+	{
+		try
+		{
+			using var response = await Http.GetAsync($"/api/UrlList?skip={currentSkip}&take={pageSize}");
 			if (response.IsSuccessStatusCode)
 			{
-				urls = await response.Content.ReadFromJsonAsync<ListResponse>();
-				urls.UrlList = urls.UrlList.OrderByDescending(x => x.Timestamp).ToList();
+				var pageResponse = await response.Content.ReadFromJsonAsync<ListResponse>();
+				if (pageResponse != null && pageResponse.UrlList != null)
+				{
+					allLoadedUrls.AddRange(pageResponse.UrlList);
+					totalCount = pageResponse.TotalCount;
+					currentSkip += pageSize;
+
+					urls.UrlList = allLoadedUrls;
+					urls.TotalCount = totalCount;
+				}
 			}
 			else
 			{
@@ -273,6 +292,37 @@ else
 		catch (Exception ex)
 		{
 			Logger.LogError(ex.ToString());
+		}
+	}
+
+	private void HandleValidationRequested(object? sender,
+	ValidationRequestedEventArgs args)
+	{
+		messageStore?.Clear();
+
+		ValidateCharacterCount();
+
+	}
+	private async Task RefreshGrid()
+	{
+		currentSkip = 0;
+		allLoadedUrls.Clear();
+		await LoadMoreUrls();
+	}
+
+	private async Task ActionBeginHandler(ActionEventArgs<ShortUrlEntity> args)
+	{
+		if (args.RequestType == Syncfusion.Blazor.Grids.Action.Paging)
+		{
+			// Check if we need to load more data
+			var currentPage = (int)args.CurrentPage;
+			var itemsNeeded = currentPage * 15; // 15 is the page size
+
+			// Load more if we're approaching the end of loaded data
+			if (itemsNeeded >= allLoadedUrls.Count && allLoadedUrls.Count < totalCount)
+			{
+				await LoadMoreUrls();
+			}
 		}
 	}
 

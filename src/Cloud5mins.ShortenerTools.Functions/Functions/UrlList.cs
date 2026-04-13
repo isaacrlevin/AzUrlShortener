@@ -53,7 +53,14 @@ namespace Cloud5mins.ShortenerTools.Functions
 
             try
             {
-                result.UrlList = await stgHelper.GetAllShortUrlEntities();
+                // Get paging parameters from query string
+                var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
+                int skip = int.TryParse(query["skip"], out var s) ? s : 0;
+                int take = int.TryParse(query["take"], out var t) ? t : 100;
+
+                var (items, totalCount) = await stgHelper.GetShortUrlEntitiesPaged(skip, take);
+                result.UrlList = items;
+                result.TotalCount = totalCount;
 
                 var host = string.IsNullOrEmpty(_settings.CustomDomain) ? req.Url.Host : _settings.CustomDomain;
                 foreach (ShortUrlEntity url in result.UrlList)

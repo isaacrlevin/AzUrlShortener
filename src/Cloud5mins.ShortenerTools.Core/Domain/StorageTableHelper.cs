@@ -64,6 +64,19 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             return lstShortUrl;
         }
 
+        public async Task<(List<ShortUrlEntity> Items, int TotalCount)> GetShortUrlEntitiesPaged(int skip, int take)
+        {
+            var tableClient = GetUrlsTable();
+            List<ShortUrlEntity> lstShortUrl = new List<ShortUrlEntity>();
+            Pageable<ShortUrlEntity> queryResultsLINQ = tableClient.Query<ShortUrlEntity>(ent => !ent.IsArchived && ent.RowKey != "KEY");
+
+            var allItems = queryResultsLINQ.OrderByDescending(x => x.Timestamp).ToList();
+            var totalCount = allItems.Count;
+            var pagedItems = allItems.Skip(skip).Take(take).ToList();
+
+            return (pagedItems, totalCount);
+        }
+
         /// <summary>
         /// Returns the ShortUrlEntity of the <paramref name="vanity"/>
         /// </summary>
