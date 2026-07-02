@@ -10,10 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-	  <PackageReference Include="Aspire.Hosting.AppHost" Version="13.1.2" />
-	  <PackageReference Include="Aspire.Hosting.Azure.CognitiveServices" Version="13.1.2" />
-	  <PackageReference Include="Aspire.Hosting.Azure.Functions" Version="13.1.2" />
-	  <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="13.1.1" />
+	  <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.3" />
+	  <PackageReference Include="Aspire.Hosting.Azure.CognitiveServices" Version="13.4.3" />
+	  <PackageReference Include="Aspire.Hosting.Azure.Functions" Version="13.4.3" />
+	  <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="13.4.0" />
 	  <PackageReference Include="CommunityToolkit.Aspire.Hosting.Azure.StaticWebApps" Version="9.5.0" />
   </ItemGroup>
 
