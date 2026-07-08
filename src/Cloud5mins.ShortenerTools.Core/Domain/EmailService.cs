@@ -28,6 +28,66 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             return stringBuilder.ToString();
         }
 
+        public async Task SendTwitterIntentEmail(string subject, string intentUrl, string tweetText)
+        {
+            var hashtags = System.Text.RegularExpressions.Regex.Matches(tweetText, @"#\w+")
+                               .Select(m => m.Value)
+                               .Distinct(StringComparer.OrdinalIgnoreCase)
+                               .ToList();
+
+            string hashtagSection = hashtags.Any()
+                ? $"<p><strong>Hashtags detected:</strong> {string.Join(" ", hashtags.Select(h => System.Net.WebUtility.HtmlEncode(h)))}</p>"
+                : string.Empty;
+
+            string htmlContent = $@"
+                <html>
+                <body>
+                    <h2>X (Twitter) Post Ready to Share</h2>
+                    <p><strong>Tweet text:</strong></p>
+                    <blockquote style=""border-left:4px solid #1DA1F2;padding-left:12px;white-space:pre-wrap;"">{System.Net.WebUtility.HtmlEncode(tweetText)}</blockquote>
+                    {hashtagSection}
+                    <p>
+                        <a href=""{intentUrl}"" style=""display:inline-block;background:#1DA1F2;color:#fff;padding:10px 20px;text-decoration:none;border-radius:4px;font-size:1.1em;font-weight:bold;"">
+                            &#x1F426; Post on X / Twitter
+                        </a>
+                    </p>
+                    <p style=""word-break:break-all;color:#555;""><small>{System.Net.WebUtility.HtmlEncode(intentUrl)}</small></p>
+                </body>
+                </html>";
+
+            EmailSendOperation emailSendOperation = await _emailClient.SendAsync(
+                Azure.WaitUntil.Started,
+                _settings.EmailFrom,
+                _settings.EmailTo,
+                subject,
+                htmlContent);
+
+            try
+            {
+                while (true)
+                {
+                    await emailSendOperation.UpdateStatusAsync();
+                    if (emailSendOperation.HasCompleted)
+                    {
+                        break;
+                    }
+                    await Task.Delay(100);
+                }
+
+                if (emailSendOperation.HasValue)
+                {
+                    _logger.LogInformation($"Twitter intent email queued for delivery. Status = {emailSendOperation.Value.Status}");
+                }
+            }
+            catch (RequestFailedException exception)
+            {
+                _logger.LogError($"Twitter intent email send failed with Code = {exception.ErrorCode} and Message = {exception.Message}");
+            }
+
+            string operationId = emailSendOperation.Id;
+            _logger.LogInformation($"Twitter intent email operation id = {operationId}");
+        }
+
         public async Task SendExceptionEmail(string subject, Exception ex, string message = "")
         {
             if (ex == null)

@@ -45,7 +45,7 @@
 		<PackageReference Include="System.Text.Json" Version="10.0.9" />
 		<PackageReference Include="FishyFlip" Version="4.3.0" />
 		<PackageReference Include="Mastonet" Version="4.0.0-preview0" />
-		<PackageReference Include="TweetinviAPI" Version="5.0.4" />
+
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Cloud5mins.ShortenerTools.Core\Cloud5mins.ShortenerTools.Core.csproj" />

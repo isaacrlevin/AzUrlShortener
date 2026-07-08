@@ -3,6 +3,7 @@ using Cloud5mins.ShortenerTools.Core.Domain.Socials;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials.LinkedIn.Models;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials.Threads;
+using Cloud5mins.ShortenerTools.Core.Domain.Socials.Twitter;
 using FishyFlip;
 using FishyFlip.Lexicon;
 using FishyFlip.Lexicon.App.Bsky.Embed;
@@ -16,9 +17,6 @@ using Microsoft.Extensions.Logging.Debug;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using System.Diagnostics;
-using Tweetinvi;
-using Tweetinvi.Core.Web;
-using Tweetinvi.Exceptions;
 
 namespace Cloud5mins.ShortenerTools.Functions.Functions
 {
@@ -32,7 +30,6 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         public readonly IThreadsManager _threadsManager;
         public readonly MastodonClient mastodonClient;
         public readonly ATProtocol atProtocol;
-        public readonly TweetsV2Poster poster;
 
         public SchedulePost(ILoggerFactory loggerFactory, ShortenerSettings settings, ILinkedInManager linkedInManager, EmailService emailService, IThreadsManager threadsManager)
         {
@@ -46,14 +43,6 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             atProtocol = new ATProtocolBuilder()
                  .WithLogger(new DebugLoggerProvider().CreateLogger("FishyFlip")).Build();
 
-            var client = new TwitterClient(
-                _settings.TwitterConsumerKey,
-                _settings.TwitterConsumerSecret,
-                _settings.TwitterAccessToken,
-                _settings.TwitterAccessSecret
-                );
-
-            poster = new TweetsV2Poster(client);
             _threadsManager = threadsManager;
 
         }
@@ -124,29 +113,32 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         {
             try
             {
-                var text = $"{linkInfo.Title}\n {linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}";
+                // Build the tweet text (same logic as before)
+                var text = $"{linkInfo.Title}\n{linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}";
 
                 if (text.Length > 280)
                 {
                     text = $"{linkInfo.Title}\n\n{ShortenerBase}{linkInfo.RowKey}";
                 }
-                ITwitterResult tweetResult = await poster.PostTweet(
-                    new TweetV2PostRequest
-                    {
-                        Text = text
-                    }
-                );
 
-                if (tweetResult.Response.IsSuccessStatusCode == false)
-                {
-                    throw new Exception(
-                        "Error when posting tweet: " + Environment.NewLine + tweetResult.Content
-                    );
-                }
+                // Build the X intent URL so the tweet can be posted with one click.
+                // Hashtags already embedded in the text are preserved automatically.
+                var intentUrl = TwitterIntentHelper.BuildIntentUrl(text, _settings.TwitterViaHandle);
+
+                var hashtags = TwitterIntentHelper.ExtractHashtags(text);
+                string hashtagInfo = hashtags.Any() ? $" (hashtags: {string.Join(", ", hashtags)})" : string.Empty;
+
+                _logger.LogInformation($"Twitter intent URL generated for {linkInfo.RowKey}{hashtagInfo}");
+
+                // Send an email with the intent URL so it can be clicked to post immediately.
+                await _emailService.SendTwitterIntentEmail(
+                    $"Ready to post on X: {linkInfo.Title}",
+                    intentUrl,
+                    text);
             }
-            catch (TwitterException ex)
+            catch (Exception ex)
             {
-                await _emailService.SendExceptionEmail($"Error when posting {linkInfo.RowKey} to Twitter", ex);
+                await _emailService.SendExceptionEmail($"Error when building Twitter intent for {linkInfo.RowKey}", ex);
             }
         }
 

@@ -9,6 +9,10 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
         public string TwitterConsumerSecret { get; set; }
         public string TwitterAccessToken { get; set; }
         public string TwitterAccessSecret { get; set; }
+        /// <summary>
+        /// Optional: your Twitter/X handle (without @) added as the "via" attribution on intent URLs.
+        /// </summary>
+        public string TwitterViaHandle { get; set; }
         public string MastodonAccessToken { get; set; }
         public string LinkedInAccessToken { get; set; }
         public string BlueskyUserName { get; set; }

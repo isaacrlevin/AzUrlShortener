@@ -1,33 +1,47 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Tweetinvi;
-using Tweetinvi.Core.Web;
-using Tweetinvi.Models;
+﻿using System.Text.RegularExpressions;
 
-namespace Cloud5mins.ShortenerTools.Core.Domain.Socials
+namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Twitter
 {
-    public class TweetsV2Poster
+    /// <summary>
+    /// Helper for building X (Twitter) intent URLs that allow one-click posting
+    /// without requiring API credentials.
+    /// Documentation: https://docs.x.com/x-for-websites/post-button/overview
+    /// </summary>
+    public static class TwitterIntentHelper
     {
-        private readonly ITwitterClient client;
+        private const string IntentBaseUrl = "https://x.com/intent/post";
 
-        public TweetsV2Poster(ITwitterClient client) => this.client = client;
-
-        public Task<ITwitterResult> PostTweet(TweetV2PostRequest tweetParams) => client.Execute.AdvanceRequestAsync(request =>
+        /// <summary>
+        /// Builds an X intent URL for one-click posting.
+        /// Hashtags already present in the text are preserved in-place.
+        /// The optional <paramref name="via"/> parameter adds a username attribution (@handle).
+        /// </summary>
+        /// <param name="text">The full tweet text (may include #hashtags).</param>
+        /// <param name="via">Optional Twitter/X username to attribute the post to (with or without leading @).</param>
+        public static string BuildIntentUrl(string text, string? via = null)
         {
-            StringContent stringContent = new StringContent(client.Json.Serialize(tweetParams), Encoding.UTF8, "application/json");
-            request.Query.Url = "https://api.twitter.com/2/tweets";
-            request.Query.HttpMethod = Tweetinvi.Models.HttpMethod.POST;
-            request.Query.HttpContent = stringContent;
-        });
-    }
+            var queryParams = new List<string>
+            {
+                $"text={Uri.EscapeDataString(text)}"
+            };
 
-    public class TweetV2PostRequest
-    {
-        [JsonProperty("text")]
-        public string Text { get; set; } = string.Empty;
+            if (!string.IsNullOrWhiteSpace(via))
+            {
+                queryParams.Add($"via={Uri.EscapeDataString(via.TrimStart('@'))}");
+            }
+
+            return $"{IntentBaseUrl}?{string.Join("&", queryParams)}";
+        }
+
+        /// <summary>
+        /// Extracts all hashtags (e.g. #azure, #dotnet) found in the given text.
+        /// </summary>
+        public static IReadOnlyList<string> ExtractHashtags(string text)
+        {
+            return Regex.Matches(text, @"#\w+")
+                        .Select(m => m.Value)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+        }
     }
 }
