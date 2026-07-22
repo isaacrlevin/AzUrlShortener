@@ -114,11 +114,22 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             try
             {
                 // Build the tweet text (same logic as before)
-                var text = $"{linkInfo.Title}\n{linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}";
+                var text = $"{linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}";
+
+                if (!string.IsNullOrEmpty((linkInfo.Title)))
+                {
+                    text = $"{linkInfo.Title}\n{text}";
+                }
+
 
                 if (text.Length > 280)
                 {
                     text = $"{linkInfo.Title}\n\n{ShortenerBase}{linkInfo.RowKey}";
+
+                    if (!string.IsNullOrEmpty((linkInfo.Title)))
+                    {
+                        text = $"{linkInfo.Title}\n{text}";
+                    }
                 }
 
                 // Build the X intent URL so the tweet can be posted with one click.
@@ -146,7 +157,14 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         {
             try
             {
-                var status = await mastodonClient.PublishStatus($"{linkInfo.Title}\n{linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}", new Mastonet.Visibility?((Mastonet.Visibility)0), (string)null, (IEnumerable<string>)null, false, (string)null, new DateTime?(), (string)null, (PollParameters)null);
+                var text = $"{linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}";
+
+                if (!string.IsNullOrEmpty((linkInfo.Title)))
+                {
+                    text = $"{linkInfo.Title}\n{text}";
+                }
+                
+                var status = await mastodonClient.PublishStatus(text, new Mastonet.Visibility?((Mastonet.Visibility)0), (string)null, (IEnumerable<string>)null, false, (string)null, new DateTime?(), (string)null, (PollParameters)null);
             }
             catch (Exception ex)
             {
@@ -168,8 +186,13 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
 
                 string shortUrl = $"{ShortenerBase}{linkInfo.RowKey}";
 
-                string postTemplate = $"{linkInfo.Title}\n{linkInfo.Message}\n\n{shortUrl}";
+                string postTemplate = $"{linkInfo.Message}\n\n{shortUrl}";
 
+                if (!string.IsNullOrEmpty((linkInfo.Title)))
+                {
+                    postTemplate = $"{linkInfo.Title}\n{postTemplate}";
+
+                }
 
                 HttpClient client = new HttpClient();
 
@@ -230,7 +253,11 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             {
                 var user = await _linkedInManager.GetMyLinkedInUserProfile(_settings.LinkedInAccessToken);
 
-                var text = $"{linkInfo.Title}\n{linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}";
+                var text = $"{linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}";
+                if (!string.IsNullOrEmpty((linkInfo.Title)))
+                {
+                    text = $"{linkInfo.Title}\n{text}";
+                }
                 var id = await _linkedInManager.PostShareTextAndLink(_settings.LinkedInAccessToken, user.Sub, text, $"{ShortenerBase}{linkInfo.RowKey}");
             }
 
@@ -244,7 +271,11 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         {
             try
             {
-                var postTemplate = $"{linkInfo.Title}\n {linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}";
+                var postTemplate = $"{linkInfo.Message}\n\n{ShortenerBase}{linkInfo.RowKey}";
+                if (!string.IsNullOrEmpty((linkInfo.Title)))
+                {
+                    postTemplate = $"{linkInfo.Title}\n{postTemplate}";
+                }
 
                 postTemplate = postTemplate.Replace("\r\n", " ");
 
