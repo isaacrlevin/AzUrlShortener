@@ -1,11 +1,12 @@
-﻿using FishyFlip;
-using FishyFlip.Lexicon.App.Bsky.Embed;
-using FishyFlip.Lexicon.App.Bsky.Richtext;
-using FishyFlip.Models;
-using System.Net.Http.Headers;
+﻿using AppBsky.Embed;
+using AppBsky.Richtext;
+using CarpaNet;
+using CarpaNet.Blob;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 
@@ -21,7 +22,8 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
 
             foreach (Match m in mentionRegex.Matches(Encoding.UTF8.GetString(textBytes)))
             {
-                facets.Add((m.Index, m.Index + m.Length, m.Groups[1].Value));
+                var mention = m.Groups[1];
+                facets.Add((GetUtf8ByteIndex(text, mention.Index), GetUtf8ByteIndex(text, mention.Index + mention.Length), mention.Value));
             }
 
             return facets;
@@ -36,7 +38,8 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
 
             foreach (Match m in urlRegex.Matches(Encoding.UTF8.GetString(textBytes)))
             {
-                facets.Add((m.Index, m.Index + m.Length, m.Groups[1].Value));
+                var url = m.Groups[1];
+                facets.Add((GetUtf8ByteIndex(text, url.Index), GetUtf8ByteIndex(text, url.Index + url.Length), url.Value));
             }
 
             return facets;
@@ -48,27 +51,33 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
             var hashtagRegex = new Regex(@"(?:^|\s)(#[^\d\s]\S*)(?=\s)?", RegexOptions.Compiled);
             foreach (Match match in hashtagRegex.Matches(text))
             {
-                string tag = match.Groups[1].Value;
-                bool hasLeadingSpace = Regex.IsMatch(tag, @"^\s");
+                var tagMatch = match.Groups[1];
+                string tag = tagMatch.Value;
                 tag = tag.Trim().TrimEnd('.', ',', ';', '!', '?');
 
                 if (tag.Length > 66) continue;
 
-                int index = match.Index + (hasLeadingSpace ? 1 : 0);
+                int index = GetUtf8ByteIndex(text, tagMatch.Index);
 
-                facets.Add((index, index + tag.Length, tag));
+                facets.Add((index, GetUtf8ByteIndex(text, tagMatch.Index + tag.Length), tag));
             }
 
             return facets;
         }
 
-        public static async Task<ATDid> GetDid(string handle, ATProtocol atProtocol)
+        private static int GetUtf8ByteIndex(string text, int charIndex)
         {
-            var handleResolution = (await atProtocol.Identity.ResolveHandleAsync(ATHandle.Create(handle.Replace("@","")))).HandleResult();
-            return handleResolution?.Did;
+            return Encoding.UTF8.GetByteCount(text.AsSpan(0, charIndex));
         }
 
-        public static async Task<Image> UploadImage(string url, ATProtocol atProtocol, List<Facet> facets, string postTemplate)
+        public static async Task<ATDid?> GetDid(string handle, IATProtoClient atProtoClient)
+        {
+            var result = await atProtoClient.ComAtprotoIdentityResolveHandleAsync(
+                new ComAtproto.Identity.ResolveHandleParameters { Handle = new ATHandle(handle.Replace("@", "")) });
+            return result?.Did;
+        }
+
+        public static async Task<ImagesImage?> UploadImage(string url, IATProtoClient atProtoClient, List<Facet> facets, string postTemplate)
         {
             string encodedUrl = HtmlEncoder.Default.Encode(url);
 
@@ -94,31 +103,20 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
                     var imageBytes = await client.GetByteArrayAsync(uri);
                     await File.WriteAllBytesAsync(Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"), imageBytes);
 
-                    var stream = File.OpenRead(Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"));
-                    var content = new StreamContent(stream);
-                    content.Headers.ContentLength = stream.Length;
+                    var blobRef = await atProtoClient.UploadBlobFromFileAsync(
+                        Path.Combine(Path.GetTempPath(), $"{fileName}.jpg"),
+                        "image/jpg");
 
-                    content.Headers.ContentType = new MediaTypeHeaderValue("image/jpg");
-                    var blobResult = await atProtocol.Repo.UploadBlobAsync(content);
+                    var blob = new ATBlob(
+                        new ATCid(blobRef.Ref?.Link ?? string.Empty),
+                        blobRef.MimeType ?? "image/jpg",
+                        blobRef.Size);
 
-                    Image image = null;
-                    await blobResult.SwitchAsync(
-                        async success =>
-                        {
-                            //image = success.Blob.ToImage();
-
-                            image = new Image(
-                                image: success.Blob,
-                                 alt: $"Embed Card for {url}"
-                                );
-
-                        },
-                        async error =>
-                        {
-                            Console.WriteLine($"Error: {error.StatusCode} {error.Detail}");
-                        }
-                        );
-                    return image;
+                    return new ImagesImage
+                    {
+                        Image = blob,
+                        Alt = $"Embed Card for {url}"
+                    };
                 }
                 catch (Exception ex)
                 {
@@ -126,6 +124,22 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
                 }
             }
             return null;
+        }
+
+        public static JsonElement CreatePostRecord(string text, List<Facet> facets, ImagesImage? image)
+        {
+            var record = new BlueskyPostRecord
+            {
+                Text = text,
+                CreatedAt = DateTimeOffset.UtcNow,
+                Facets = facets.Select(CreateFacetRecord).ToList(),
+                Embed = image is null ? null : new BlueskyImagesEmbed
+                {
+                    Images = new List<BlueskyImage> { new() { Image = image.Image, Alt = image.Alt } }
+                }
+            };
+
+            return JsonSerializer.SerializeToElement(record);
         }
 
         public static string SanitizeFileName(string input)
@@ -137,6 +151,99 @@ namespace Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky
             var sanitized = regex.Replace(input, string.Empty);
 
             return sanitized;
+        }
+
+        private static BlueskyFacet CreateFacetRecord(Facet facet)
+        {
+            return new BlueskyFacet
+            {
+                Index = facet.Index,
+                Features = facet.Features.Select(CreateFacetFeatureRecord).ToList()
+            };
+        }
+
+        private static object CreateFacetFeatureRecord(IFacetFeatures feature)
+        {
+            return feature switch
+            {
+                FacetTag tag => new BlueskyFacetTag { Tag = tag.Tag },
+                FacetLink link => new BlueskyFacetLink { Uri = link.Uri },
+                FacetMention mention => new BlueskyFacetMention { Did = mention.Did },
+                _ => throw new InvalidOperationException($"Unsupported Bluesky facet feature type: {feature.GetType().FullName}")
+            };
+        }
+
+        private sealed class BlueskyPostRecord
+        {
+            [JsonPropertyName("$type")]
+            public string Type => "app.bsky.feed.post";
+
+            [JsonPropertyName("text")]
+            public required string Text { get; set; }
+
+            [JsonPropertyName("facets")]
+            public required List<BlueskyFacet> Facets { get; set; }
+
+            [JsonPropertyName("embed")]
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+            public BlueskyImagesEmbed? Embed { get; set; }
+
+            [JsonPropertyName("createdAt")]
+            public required DateTimeOffset CreatedAt { get; set; }
+        }
+
+        private sealed class BlueskyFacet
+        {
+            [JsonPropertyName("index")]
+            public required FacetByteSlice Index { get; set; }
+
+            [JsonPropertyName("features")]
+            public required List<object> Features { get; set; }
+        }
+
+        private sealed class BlueskyFacetTag
+        {
+            [JsonPropertyName("$type")]
+            public string Type => FacetTag.TypeId;
+
+            [JsonPropertyName("tag")]
+            public required string Tag { get; set; }
+        }
+
+        private sealed class BlueskyFacetLink
+        {
+            [JsonPropertyName("$type")]
+            public string Type => FacetLink.TypeId;
+
+            [JsonPropertyName("uri")]
+            public required string Uri { get; set; }
+        }
+
+        private sealed class BlueskyFacetMention
+        {
+            [JsonPropertyName("$type")]
+            public string Type => FacetMention.TypeId;
+
+            [JsonPropertyName("did")]
+            public required ATDid Did { get; set; }
+        }
+
+        private sealed class BlueskyImagesEmbed
+        {
+            [JsonPropertyName("$type")]
+            public string Type => AppBsky.Embed.Images.TypeId;
+
+            [JsonPropertyName("images")]
+            public required List<BlueskyImage> Images { get; set; }
+        }
+
+        private sealed class BlueskyImage
+        {
+            [JsonPropertyName("image")]
+            public required ATBlob Image { get; set; }
+
+            [JsonPropertyName("alt")]
+            public required string Alt { get; set; }
         }
     }
 }

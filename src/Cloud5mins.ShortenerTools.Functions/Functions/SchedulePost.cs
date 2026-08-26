@@ -4,16 +4,15 @@ using Cloud5mins.ShortenerTools.Core.Domain.Socials.Bluesky;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials.LinkedIn.Models;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials.Threads;
 using Cloud5mins.ShortenerTools.Core.Domain.Socials.Twitter;
-using FishyFlip;
-using FishyFlip.Lexicon;
-using FishyFlip.Lexicon.App.Bsky.Embed;
-using FishyFlip.Lexicon.App.Bsky.Richtext;
+using AppBsky.Embed;
+using AppBsky.Richtext;
+using CarpaNet;
+using ComAtproto.Repo;
 using Mastonet;
 using Mastonet.Entities;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Debug;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using System.Diagnostics;
@@ -29,9 +28,9 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         public readonly string ShortenerBase = "https://isaacl.dev/";
         public readonly IThreadsManager _threadsManager;
         public readonly MastodonClient mastodonClient;
-        public readonly ATProtocol atProtocol;
 
-        public SchedulePost(ILoggerFactory loggerFactory, ShortenerSettings settings, ILinkedInManager linkedInManager, EmailService emailService, IThreadsManager threadsManager)
+        public SchedulePost(ILoggerFactory loggerFactory, ShortenerSettings settings, ILinkedInManager linkedInManager,
+            EmailService emailService, IThreadsManager threadsManager)
         {
             _logger = loggerFactory.CreateLogger<SchedulePost>();
             _settings = settings;
@@ -40,15 +39,15 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
             _threadsManager = threadsManager;
 
             mastodonClient = new MastodonClient("fosstodon.org", _settings.MastodonAccessToken);
-            atProtocol = new ATProtocolBuilder()
-                 .WithLogger(new DebugLoggerProvider().CreateLogger("FishyFlip")).Build();
 
             _threadsManager = threadsManager;
-
         }
 
         [Function("TestShortUrl")]
-        public async Task Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "test/{shortUrl}")] HttpRequestData req, string shortUrl, ExecutionContext context)
+        public async Task Run(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "test/{shortUrl}")]
+            HttpRequestData req,
+            string shortUrl, ExecutionContext context)
         {
             if (Debugger.IsAttached)
             {
@@ -80,7 +79,10 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         }
 
         [Function("SchedulePostHttp")]
-        public async Task SchedulePostHttp([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/SchedulePost")] HttpRequestData req, ExecutionContext context)
+        public async Task SchedulePostHttp(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/SchedulePost")]
+            HttpRequestData req,
+            ExecutionContext context)
         {
             if (Debugger.IsAttached)
             {
@@ -163,8 +165,10 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                 {
                     text = $"{linkInfo.Title}\n{text}";
                 }
-                
-                var status = await mastodonClient.PublishStatus(text, new Mastonet.Visibility?((Mastonet.Visibility)0), (string)null, (IEnumerable<string>)null, false, (string)null, new DateTime?(), (string)null, (PollParameters)null);
+
+                var status = await mastodonClient.PublishStatus(text, new Mastonet.Visibility?((Mastonet.Visibility)0),
+                    (string)null, (IEnumerable<string>)null, false, (string)null, new DateTime?(), (string)null,
+                    (PollParameters)null);
             }
             catch (Exception ex)
             {
@@ -176,11 +180,13 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
         {
             try
             {
-                var session = await atProtocol.AuthenticateWithPasswordResultAsync(_settings.BlueskyUserName, _settings.BlueskyPassword);
+                var atProtoClient = await ATProtoClientFactory.CreateWithSessionAsync(
+                    _settings.BlueskyUserName, _settings.BlueskyPassword);
 
-                if (session is null)
+                if (atProtoClient is null || !atProtoClient.IsAuthenticated)
                 {
-                    _logger.LogError("Failed to authenticate."); ;
+                    _logger.LogError("Failed to authenticate.");
+                    ;
                     return;
                 }
 
@@ -191,55 +197,49 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                 if (!string.IsNullOrEmpty((linkInfo.Title)))
                 {
                     postTemplate = $"{linkInfo.Title}\n{postTemplate}";
-
                 }
 
                 HttpClient client = new HttpClient();
 
                 List<Facet> facets = new List<Facet>();
 
-              
+
                 var tags = BlueskyUtilities.ExtractTags(postTemplate);
                 foreach (var tag in tags)
                 {
-                    facets.Add(Facet.CreateFacetHashtag(tag.start, tag.end + 1, tag.tag.Replace("#","")));
+                    facets.Add(new Facet
+                    {
+                        Index = new FacetByteSlice { ByteStart = tag.start, ByteEnd = tag.end },
+                        Features = new List<IFacetFeatures> { new FacetTag { Tag = tag.tag.Replace("#", "") } }
+                    });
                 }
 
                 var facetUrl = (await BlueskyUtilities.ExtractUrls(postTemplate)).First();
 
-                facets.Add(Facet.CreateFacetLink(facetUrl.start, facetUrl.end, facetUrl.url));
-
-                var image = await BlueskyUtilities.UploadImage(shortUrl, atProtocol, facets, postTemplate);
-
-                if (facets != null && image != null)
+                facets.Add(new Facet
                 {
-                    var postResult = await atProtocol.Feed.CreatePostAsync(postTemplate, facets: facets, embed: new EmbedImages(images: new() { image }));
+                    Index = new FacetByteSlice { ByteStart = facetUrl.start, ByteEnd = facetUrl.end },
+                    Features = new List<IFacetFeatures> { new FacetLink { Uri = facetUrl.url } }
+                });
 
-                    postResult.Switch(
-                        success =>
+                var image = await BlueskyUtilities.UploadImage(shortUrl, atProtoClient, facets, postTemplate);
+
+                try
+                {
+                    var postResult = await atProtoClient.ComAtprotoRepoCreateRecordAsync(
+                        new CreateRecordInput
                         {
-                            _logger.LogInformation($"Post: {success.Uri} {success.Cid}");
-                        },
-                        error =>
-                        {
-                            _logger.LogInformation($"Error: {error.StatusCode} {error.Detail}");
+                            Repo = new ATIdentifier(atProtoClient.AuthenticatedDid!),
+                            Collection = "app.bsky.feed.post",
+                            Record = BlueskyUtilities.CreatePostRecord(postTemplate, facets, image)
                         });
-                }
-                else
-                {
-                    var postResult = await atProtocol.Feed.CreatePostAsync(postTemplate, facets: facets);
-                    postResult.Switch(
-                        success =>
-                        {
-                            _logger.LogInformation($"Post: {success.Uri} {success.Cid}");
-                        },
-                        error =>
-                        {
-                            _logger.LogInformation($"Error: {error.StatusCode} {error.Detail}");
-                        }
-                        );
-                }
 
+                    _logger.LogInformation($"Post: {postResult.Uri} {postResult.Cid}");
+                }
+                catch (ATProtoException ex)
+                {
+                    _logger.LogInformation($"Error: {ex.Message}");
+                }
             }
             catch (Exception ex)
             {
@@ -258,7 +258,9 @@ namespace Cloud5mins.ShortenerTools.Functions.Functions
                 {
                     text = $"{linkInfo.Title}\n{text}";
                 }
-                var id = await _linkedInManager.PostShareTextAndLink(_settings.LinkedInAccessToken, user.Sub, text, $"{ShortenerBase}{linkInfo.RowKey}");
+
+                var id = await _linkedInManager.PostShareTextAndLink(_settings.LinkedInAccessToken, user.Sub, text,
+                    $"{ShortenerBase}{linkInfo.RowKey}");
             }
 
             catch (Exception ex)

@@ -3,6 +3,8 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		<CarpaNet_JsonContextName>ATProtoJsonContext</CarpaNet_JsonContextName>
+		<CarpaNet_LexiconAutoResolve>true</CarpaNet_LexiconAutoResolve>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="Azure.Communication.Email" Version="1.1.0" />
@@ -13,6 +15,20 @@
 		<PackageReference Include="System.Text.Json" Version="10.0.9" />
 		<PackageReference Include="UAParser" Version="3.1.47" />
 
-		<PackageReference Include="FishyFlip" Version="4.3.0" />
+		<PackageReference Include="CarpaNet" Version="1.0.3" />
+		<PackageReference Include="CarpaNet.SourceGen" Version="0.1.0-alpha.54">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<LexiconResolve Include="app.bsky.feed.post" />
+		<LexiconResolve Include="app.bsky.embed.images" />
+		<LexiconResolve Include="app.bsky.embed.external" />
+		<LexiconResolve Include="app.bsky.richtext.facet" />
+		<LexiconResolve Include="com.atproto.repo.createRecord" />
+		<LexiconResolve Include="com.atproto.repo.uploadBlob" />
+		<LexiconResolve Include="com.atproto.identity.resolveHandle" />
 	</ItemGroup>
 </Project>
