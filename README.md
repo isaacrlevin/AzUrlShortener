@@ -7,6 +7,7 @@
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 
+
 ![UrlShortener][UrlShortener]
 
 A simple and easy to use and to deploy budget-friendly Url Shortener for everyone. It runs in your Azure (Microsoft cloud) subscription.  
