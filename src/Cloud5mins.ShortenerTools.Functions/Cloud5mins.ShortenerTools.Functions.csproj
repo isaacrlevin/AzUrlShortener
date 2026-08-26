@@ -41,7 +41,7 @@
 		<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.11" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
 		<PackageReference Include="OllamaSharp" Version="5.4.30" />
-		<PackageReference Include="SixLabors.ImageSharp" Version="4.1.1" />
+		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.1" />
 		<PackageReference Include="System.Text.Json" Version="10.0.11" />
 		<PackageReference Include="CarpaNet" Version="1.0.3" />
 		<PackageReference Include="Mastonet" Version="4.0.0-preview0" />
