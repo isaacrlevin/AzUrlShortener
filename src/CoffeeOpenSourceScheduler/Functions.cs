@@ -281,11 +281,18 @@ namespace TwitterScheduler
                 _logger.LogInformation($"Twitter intent URL generated for {pickedGuest.GuestName}{hashtagInfo}");
 
                 // Send an email with the intent URL so it can be clicked to post immediately.
-                await _emailService.SendTwitterIntentEmail(
-                    $"Ready to post on X: {pickedGuest.GuestName}",
-                    intentUrl,
-                    postTemplate);
-                _logger.LogInformation("Tweet Published");
+                try
+                {
+                    await _emailService.SendTwitterIntentEmail(
+                        $"Ready to post on X: {pickedGuest.GuestName}",
+                        intentUrl,
+                        postTemplate);
+                    _logger.LogInformation("Tweet Published");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Failed to send Twitter intent email for {pickedGuest.GuestName}");
+                }
             }
             catch (TwitterException ex)
             {
