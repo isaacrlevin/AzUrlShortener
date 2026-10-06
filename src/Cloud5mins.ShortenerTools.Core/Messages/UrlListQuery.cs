@@ -97,15 +97,16 @@ namespace Cloud5mins.ShortenerTools.Core.Messages
                     return value != null;
                 if (item.Timestamp == null)
                     return false;
-                var date = DateTimeOffset.Parse(filter.Value!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+                var date = DateTimeOffset.Parse(filter.Value!, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind).Date;
+                var timestampDate = item.Timestamp.Value.Date;
                 return filter.Operator switch
                 {
-                    "is" => item.Timestamp == date,
-                    "is not" => item.Timestamp != date,
-                    "is after" => item.Timestamp > date,
-                    "is on or after" => item.Timestamp >= date,
-                    "is before" => item.Timestamp < date,
-                    "is on or before" => item.Timestamp <= date,
+                    "is" => timestampDate == date,
+                    "is not" => timestampDate != date,
+                    "is after" => timestampDate > date,
+                    "is on or after" => timestampDate >= date,
+                    "is before" => timestampDate < date,
+                    "is on or before" => timestampDate <= date,
                     _ => throw new ArgumentException("Unsupported timestamp filter operator.")
                 };
             }
