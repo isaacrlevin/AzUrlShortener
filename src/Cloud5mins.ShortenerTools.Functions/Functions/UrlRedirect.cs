@@ -19,12 +19,21 @@ namespace Cloud5mins.ShortenerTools.Functions
     {
         private readonly ILogger _logger;
         private readonly ShortenerSettings _settings;
+        private readonly StorageTableHelper _storage;
 
 
-        public UrlRedirect(ILoggerFactory loggerFactory, ShortenerSettings settings)
+        /// <summary>Creates the redirect function using the existing settings and storage helper.</summary>
+        /// <param name="loggerFactory">The application logger factory.</param>
+        /// <param name="settings">The shortener configuration.</param>
+        /// <param name="storage">The application's table storage helper.</param>
+        public UrlRedirect(ILoggerFactory loggerFactory, ShortenerSettings settings, StorageTableHelper storage)
         {
+            ArgumentNullException.ThrowIfNull(loggerFactory);
+            ArgumentNullException.ThrowIfNull(settings);
+            ArgumentNullException.ThrowIfNull(storage);
             _logger = loggerFactory.CreateLogger<UrlRedirect>();
             _settings = settings;
+            _storage = storage;
         }
 
         [Function("UrlRedirect")]
@@ -58,12 +67,10 @@ namespace Cloud5mins.ShortenerTools.Functions
             {
                 redirectUrl = _settings.DefaultRedirectUrl ?? redirectUrl;
 
-                StorageTableHelper stgHelper = new StorageTableHelper(_settings.DataStorage);
-
                 var tempUrl = new ShortUrlEntity(string.Empty, shortUrl);
-                var newUrl = await stgHelper.GetShortUrlEntity(tempUrl);
+                var newUrl = await _storage.GetShortUrlEntity(tempUrl);
 
-                if (newUrl != null)
+                if (newUrl != null && !newUrl.IsArchived)
                 {
                     _logger.LogInformation($"Found it: {newUrl.Url}");
 
@@ -107,9 +114,13 @@ namespace Cloud5mins.ShortenerTools.Functions
 
                     var click = new ClickStatsEntity(parsed, page);
 
-                    await stgHelper.SaveClickStatsEntity(click);
+                    await _storage.SaveClickStatsEntity(click);
 
                     redirectUrl = WebUtility.UrlDecode(newUrl.Url);
+                }
+                else
+                {
+                    _logger.LogInformation("Missing or archived link {ShortUrl}; using fallback.", shortUrl);
                 }
             }
             else

@@ -8,6 +8,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
     public class StorageTableHelper
     {
         private string StorageConnectionString { get; set; }
+        private readonly TableServiceClient? _tableServiceClient;
 
         public StorageTableHelper() { }
 
@@ -15,9 +16,17 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
         {
             StorageConnectionString = storageConnectionString;
         }
+
+        /// <summary>Creates a helper using an existing Azure Tables client.</summary>
+        /// <param name="tableServiceClient">The client used for table operations.</param>
+        public StorageTableHelper(TableServiceClient tableServiceClient)
+        {
+            ArgumentNullException.ThrowIfNull(tableServiceClient);
+            _tableServiceClient = tableServiceClient;
+        }
         public TableServiceClient CreateStorageAccountFromConnectionString()
         {
-            TableServiceClient tableClient = new TableServiceClient(StorageConnectionString);
+            TableServiceClient tableClient = _tableServiceClient ?? new TableServiceClient(StorageConnectionString);
             return tableClient;
         }
 
@@ -41,7 +50,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             return table;
         }
 
-        public async Task<ShortUrlEntity> GetShortUrlEntity(ShortUrlEntity row)
+        public virtual async Task<ShortUrlEntity> GetShortUrlEntity(ShortUrlEntity row)
         {
             var tableClient = GetUrlsTable();
             var result = await tableClient.GetEntityIfExistsAsync<ShortUrlEntity>(row.PartitionKey, row.RowKey);
@@ -96,7 +105,7 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
             Pageable<ShortUrlEntity> results = tableClient.Query<ShortUrlEntity>(ent => ent.ShortUrl == vanity);
             return results.FirstOrDefault();
         }
-        public async Task SaveClickStatsEntity(ClickStatsEntity newStats)
+        public virtual async Task SaveClickStatsEntity(ClickStatsEntity newStats)
         {
             var tableClient = GetStatsTable();
             await tableClient.UpsertEntityAsync(newStats);
@@ -183,6 +192,24 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
                 stats.AddRange(qEntity);
             }
             return stats.OrderByDescending(a=> a.Date).ToList();
+        }
+
+        /// <summary>Streams only stored timestamps and returns daily click counts.</summary>
+        /// <param name="request">The optional vanity, inclusive date bounds, and display time zone.</param>
+        /// <returns>Chronologically ordered daily counts without individual telemetry.</returns>
+        public virtual async Task<ClickDateList> GetDailyStats(UrlClickStatsRequest request)
+        {
+            var aggregation = new DailyClickAggregation(request);
+            var tableClient = GetStatsTable();
+            var filter = string.IsNullOrEmpty(request.Vanity)
+                ? null
+                : TableClient.CreateQueryFilter($"PartitionKey eq {request.Vanity}");
+            await foreach (var click in tableClient.QueryAsync<TableEntity>(
+                filter: filter, select: new[] { nameof(ClickStatsEntity.Datetime) }))
+            {
+                aggregation.Add(click.GetString(nameof(ClickStatsEntity.Datetime)));
+            }
+            return new ClickDateList { Items = aggregation.GetItems() };
         }
 
         public async Task<ShortUrlEntity> ArchiveShortUrlEntity(ShortUrlEntity urlEntity)

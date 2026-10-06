@@ -24,6 +24,14 @@ Features:
 
 ## Local Development
 
+NuGet package versions are managed centrally in `src\Directory.Packages.props`. Existing application versions are preserved, including the scheduler's separate Application Insights versions. Update the central entries rather than adding versions to project references. Generated Azure Functions extension projects retain their SDK-managed dependencies.
+
+Daily counts are available through `POST /api/UrlClickStatsByDay` with optional `Vanity`, inclusive `StartDate` and `EndDate` (`yyyy-MM-dd`), and `TimeZoneId`. The response contains `Items` (`DateClicked`, `Count`) and `Url` (empty for all links). Omitted date bounds include all dates; days without clicks are omitted. Invalid inputs return 400, and storage/data failures return 500. This read-only endpoint streams timestamp columns and aggregates on the server; it does not change stored click records or the existing `/api/UrlStats` response.
+
+Archived short links now redirect to the configured `DefaultRedirectUrl` (or the existing `https://isaaclevin.com` fallback) without recording a click. Active-link analytics, bot handling, and social metadata are unchanged.
+
+Regression tests can be run with `dotnet test src\Cloud5mins.ShortenerTools.Tests\Cloud5mins.ShortenerTools.Tests.csproj`.
+
 Run Functions and TinyBlazorAdmin together with `shortenerTools.AppHost`. Aspire manages the application processes, Azurite, Ollama, and a repository-pinned Azure Static Web Apps CLI for local API routing and mock authentication.
 
 See [local development and debugging instructions](./src/Cloud5mins.ShortenerTools.TinyBlazorAdmin/README.md#local-development-and-debugging-with-aspire) for prerequisites, first-time setup, and F5 debugging. Open the **swa** dashboard endpoint and sign in with the `admin` role.
@@ -144,4 +152,3 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 [ThumbnailYTAzUrlShortener_EN]: https://github.com/microsoft/AzUrlShortener/raw/main/Media/ThumbnailYTAzUrlShortener_EN.png
 [glo]: https://github.com/microsoft/AzUrlShortener/raw/main/Media/glo-board_screenshot.png
 [AzFunctionGitSync]: https://github.com/microsoft/AzUrlShortener/raw/main/Media/AzFunctionGitSync.png
-

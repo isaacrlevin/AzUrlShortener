@@ -7,16 +7,16 @@
 		<CarpaNet_LexiconAutoResolve>true</CarpaNet_LexiconAutoResolve>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="Azure.Communication.Email" Version="1.1.0" />
-		<PackageReference Include="cronos" Version="0.13.0" />
-		<PackageReference Include="Azure.Data.Tables" Version="12.12.0" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-		<PackageReference Include="System.Text.Json" Version="10.0.11" />
-		<PackageReference Include="UAParser" Version="3.1.47" />
+		<PackageReference Include="Azure.Communication.Email" />
+		<PackageReference Include="cronos" />
+		<PackageReference Include="Azure.Data.Tables" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+		<PackageReference Include="Newtonsoft.Json" />
+		<PackageReference Include="System.Text.Json" />
+		<PackageReference Include="UAParser" />
 
-		<PackageReference Include="CarpaNet" Version="1.0.3" />
-		<PackageReference Include="CarpaNet.SourceGen" Version="0.1.0-alpha.54">
+		<PackageReference Include="CarpaNet" />
+		<PackageReference Include="CarpaNet.SourceGen">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>

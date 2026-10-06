@@ -56,6 +56,7 @@ builder.Logging.Services.Configure<LoggerFilterOptions>(options =>
 });
 
 builder.Services.AddSingleton(options => { return shortenerSettings; });
+builder.Services.AddSingleton(_ => new StorageTableHelper(shortenerSettings.DataStorage));
 
 builder.AddAIServices();
 

@@ -15,6 +15,8 @@ The URL manager initially retrieves only the newest 100 active links (by storage
 
 Statistics initially show all clicks. The date-range picker filters by inclusive local calendar dates and updates the daily chart, category charts, and 50-row click-data grid together; clearing the range restores all clicks. URL-specific statistics use the same behavior.
 
+The daily chart now uses the server-side `/api/UrlClickStatsByDay` aggregation endpoint, sending the browser's time zone so daily boundaries match the existing local-date filtering. Individual click records still come from `/api/UrlStats` for the category charts and detailed grid; changing dates refreshes only daily aggregates and filters the cached details. Existing timestamp interpretation is preserved, including legacy timestamps without a time-zone suffix. These timestamps still require a storage scan to aggregate; this is not a precomputed rollup or an indexed date query.
+
 To build locally, run `dotnet build src\Cloud5mins.ShortenerTools.TinyBlazorAdmin\Cloud5mins.ShortenerTools.TinyBlazorAdmin.csproj` with the .NET 10 SDK. API requests use the browser's origin so they pass through Azure Static Web Apps (or its local emulator), including its authentication and route rules. The old `API_Prefix` development setting is no longer used.
 
 ## Local development and debugging with Aspire
