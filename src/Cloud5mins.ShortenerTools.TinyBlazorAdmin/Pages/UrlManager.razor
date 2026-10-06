@@ -332,6 +332,11 @@
         try
         {
             using var response = await Http.PostAsJsonAsync(endpoint, request);
+            if (endpoint == "/api/UrlCreate" && response.StatusCode == HttpStatusCode.Conflict)
+            {
+                dialogError = "This vanity URL already exists. Choose a different vanity.";
+                return false;
+            }
             EnsureApiSuccess(response);
             return true;
         }
