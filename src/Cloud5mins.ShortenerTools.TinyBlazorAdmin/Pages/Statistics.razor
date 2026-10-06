@@ -1,200 +1,147 @@
 @page "/statistics"
 @page "/statistics/{vanity}"
-
-@using System.Security.Claims
 @using System.Diagnostics
-@inject IJSRuntime JSRuntime
 @inject HttpClient Http
 @inject NavigationManager NavigationManager
 @inject ILogger<Statistics> Logger
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
-<h1>@subTitle</h1>
-<a href="/UrlManager/"> &lt;&lt; Back</a>
+<PageTitle>Tiny Blazor Admin - Statistics</PageTitle>
+<h1>@SubTitle</h1>
+<MudButton Href="/urlmanager" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mb-4">Back</MudButton>
 
-<div id="stats">
-    @if (clickStatsEntities != null)
+@if (isLoading)
+{
+    <div class="loading-state" role="status"><MudProgressCircular Indeterminate="true" />Counting all those clicks...</div>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <MudAlert Severity="Severity.Error">@errorMessage</MudAlert>
+    <MudButton OnClick="LoadStatistics">Retry</MudButton>
+}
+else
+{
+    <MudDateRangePicker Label="Date range (local dates)" DateRange="dateRange" DateRangeChanged="ChangeDateRange"
+                        Clearable="true" DateFormat="MM/dd/yyyy" Class="mb-4" />
+    @if (filteredClicks.Count == 0)
     {
-        if (clickStatsEntities.Count == 0)
-        {
-            <div>No Click Data</div>
-        }
-        else
-        {
-            <SfChart Title="Click Stats">
-                <ChartEvents />
-                <ChartArea><ChartAreaBorder Width="1"></ChartAreaBorder></ChartArea>
-                <ChartPrimaryXAxis ValueType="Syncfusion.Blazor.Charts.ValueType.DateTime"
-                                   LabelFormat="MM/dd/yyy"
-                                   EdgeLabelPlacement="EdgeLabelPlacement.Shift" RangePadding="ChartRangePadding.Auto">
-                    <ChartAxisMajorGridLines Width="1"></ChartAxisMajorGridLines>
-                </ChartPrimaryXAxis>
-
-                <ChartPrimaryYAxis LabelFormat="{value}">
-                    <ChartAxisLineStyle Width="1"></ChartAxisLineStyle>
-                    <ChartAxisMajorTickLines Width="1"></ChartAxisMajorTickLines>
-                </ChartPrimaryYAxis>
-                <ChartTooltipSettings Enable="true"></ChartTooltipSettings>
-
-                <ChartSeriesCollection>
-                    <ChartSeries DataSource="@clickStatsEntities.GroupBy(s => s.Date.Date).Select(stat => new { DateClicked = stat.Key, Count = stat.Count() }).ToList()"
-                                 Name="Click(s) by Day"
-                                 XName="DateClicked"
-                                 YName="Count"
-                                 Type="ChartSeriesType.Line">
-                        <ChartMarker Visible="true"></ChartMarker>
-                    </ChartSeries>
-                </ChartSeriesCollection>
-
-            </SfChart>
-
-            <div style="display: flex; justify-content: space-around;">
-                <SfAccumulationChart Title="ShortUrl Statistics" Width="200px">
-                    <AccumulationChartSeriesCollection>
-                        <AccumulationChartSeries DataSource="@clickStatsEntities.GroupBy(a=> a.ShortUrl).Select(stat => new { ShortUrl = stat.Key, Count = stat.Count() })"
-                                                 XName="ShortUrl" YName="Count" Name="ShortUrl">
-                            <AccumulationDataLabelSettings Visible="true" />
-                        </AccumulationChartSeries>
-                    </AccumulationChartSeriesCollection>
-
-                    <AccumulationChartLegendSettings Visible="true"></AccumulationChartLegendSettings>
-                </SfAccumulationChart>
-
-                <SfAccumulationChart Title="Platform Statistics" Width="200px">
-                    <AccumulationChartSeriesCollection>
-                        <AccumulationChartSeries DataSource="@clickStatsEntities.GroupBy(a=> a.Platform).Select(stat => new { Platform = stat.Key, Count = stat.Count() })"
-                                                 XName="Platform" YName="Count" Name="Platform">
-                            <AccumulationDataLabelSettings Visible="true" />
-                        </AccumulationChartSeries>
-                    </AccumulationChartSeriesCollection>
-
-                    <AccumulationChartLegendSettings Visible="true"></AccumulationChartLegendSettings>
-                </SfAccumulationChart>
-
-                <SfAccumulationChart Title="Mobile Browser Statistics" Width="200px">
-                    <AccumulationChartSeriesCollection>
-                        <AccumulationChartSeries DataSource="@clickStatsEntities.GroupBy(a=> a.Browser).Select(stat => new { Browser = stat.Key, Count = stat.Count() })"
-                                                 XName="Browser" YName="Count" Name="Browser">
-                            <AccumulationDataLabelSettings Visible="true" />
-                        </AccumulationChartSeries>
-                    </AccumulationChartSeriesCollection>
-
-                    <AccumulationChartLegendSettings Visible="true"></AccumulationChartLegendSettings>
-                </SfAccumulationChart>
-
-                <SfAccumulationChart Title="Device Type Statistics" Width="200px">
-                    <AccumulationChartSeriesCollection>
-                        <AccumulationChartSeries DataSource="@clickStatsEntities.GroupBy(a => a.IsDesktop).Select(stat => new { DeviceType = stat.Key ? "Desktop" : "Mobile", Count = stat.Count() })"
-                                                 XName="DeviceType" YName="Count" Name="DeviceType">
-                            <AccumulationDataLabelSettings Visible="true" />
-                        </AccumulationChartSeries>
-                    </AccumulationChartSeriesCollection>
-
-                    <AccumulationChartLegendSettings Visible="true"></AccumulationChartLegendSettings>
-                </SfAccumulationChart>
-            </div>
-
-            <SfAccordion>
-                <AccordionItems>
-                    <AccordionItem>
-                        <HeaderTemplate>
-                            <h3>Click Data</h3>
-                        </HeaderTemplate>
-                        <ContentTemplate>
-                            <SfGrid DataSource="@clickStatsEntities" id="grdStats" AllowPaging="true" AllowSorting="true">
-                                <GridPageSettings PageSize="50"></GridPageSettings>
-                                <GridColumns>
-                                    <GridColumn Field=@nameof(ClickStatsEntity.Date) HeaderText="Timestamp" Format="MM/dd/yyyy hh:mm:ss tt" Type="ColumnType.Date" TextAlign="TextAlign.Right" Width="200"></GridColumn>
-                                    <GridColumn Field=@nameof(ClickStatsEntity.Page) HeaderText="Page"></GridColumn>
-                                    <GridColumn Field=@nameof(ClickStatsEntity.ShortUrl) HeaderText="ShortUrl"></GridColumn>
-                                    <GridColumn Field=@nameof(ClickStatsEntity.BrowserWithVersion) HeaderText="Browser"></GridColumn>
-                                    <GridColumn Field=@nameof(ClickStatsEntity.PlatformWithVersion) HeaderText="Platform"></GridColumn>
-                                    <GridColumn Field=@nameof(ClickStatsEntity.ReferrerUrl) HeaderText="ReferrerUrl"></GridColumn>
-                                </GridColumns>
-                            </SfGrid>
-                        </ContentTemplate>
-                    </AccordionItem>
-                </AccordionItems>
-            </SfAccordion>
-        }
+        <MudAlert Severity="Severity.Info">No Click Data</MudAlert>
     }
     else
     {
-        <SfSpinner Size="40" Label="Counting all those clicks..." Type="Syncfusion.Blazor.Spinner.SpinnerType.Material" Visible="@isLoading"></SfSpinner>
+        <MudPaper Class="pa-4 mb-4" Outlined="true">
+            <MudText Typo="Typo.h6">Click Stats</MudText>
+            <MudTimeSeriesChart ChartSeries="dailySeries" TimeLabelFormat="MM/dd/yyyy"
+                                TimeLabelSpacing="@TimeSpan.FromDays(1)" DataMarkerTooltipTimeLabelFormat="MM/dd/yyyy"
+                                Width="100%" Height="350px" ChartOptions="chartOptions" />
+            <MudSimpleTable Dense="true" Class="mt-2" aria-label="Clicks by day">
+                <thead><tr><th>Date</th><th>Click(s) by Day</th></tr></thead>
+                <tbody>
+                    @for (var i = 0; i < dailyLabels.Length; i++)
+                    {
+                        <tr><td>@dailyLabels[i]</td><td>@dailySeries[0].Data[i].Value</td></tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+        <MudGrid>
+            <MudItem xs="12" sm="6" lg="3"><StatisticsPie Title="ShortUrl Statistics" Clicks="filteredClicks" Category="@(x => x.ShortUrl)" /></MudItem>
+            <MudItem xs="12" sm="6" lg="3"><StatisticsPie Title="Platform Statistics" Clicks="filteredClicks" Category="@(x => x.Platform)" /></MudItem>
+            <MudItem xs="12" sm="6" lg="3"><StatisticsPie Title="Mobile Browser Statistics" Clicks="filteredClicks" Category="@(x => x.Browser)" /></MudItem>
+            <MudItem xs="12" sm="6" lg="3"><StatisticsPie Title="Device Type Statistics" Clicks="filteredClicks" Category="@(x => x.IsDesktop ? "Desktop" : "Mobile")" /></MudItem>
+        </MudGrid>
+        <MudExpansionPanels Class="mt-4">
+            <MudExpansionPanel Text="Click Data">
+                <MudDataGrid T="ClickStatsEntity" Items="filteredClicks" RowsPerPage="50" SortMode="SortMode.Multiple" Dense="true" Hover="true">
+                    <Columns>
+                        <PropertyColumn Property="x => x.Date" Title="Timestamp" Format="MM/dd/yyyy hh:mm:ss tt" />
+                        <PropertyColumn Property="x => x.Page" Title="Page" />
+                        <PropertyColumn Property="x => x.ShortUrl" Title="ShortUrl" />
+                        <PropertyColumn Property="x => x.BrowserWithVersion" Title="Browser" />
+                        <PropertyColumn Property="x => x.PlatformWithVersion" Title="Platform" />
+                        <PropertyColumn Property="x => x.ReferrerUrl" Title="ReferrerUrl" />
+                    </Columns>
+                    <PagerContent><MudDataGridPager T="ClickStatsEntity" PageSizeOptions="@(new[] { 50, 100 })" /></PagerContent>
+                </MudDataGrid>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
     }
-</div>
+}
 
 @code {
+    [Parameter] public string vanity { get; set; }
 
+    private string SubTitle => string.IsNullOrEmpty(vanity) ? "All Click Stats" : $"Click Stats for: {vanity}";
+    private bool isLoading = true;
+    private string errorMessage;
+    private List<ClickStatsEntity> clicks = new();
+    private List<ClickStatsEntity> filteredClicks = new();
+    private DateRange dateRange;
+    private List<TimeSeriesChartSeries> dailySeries = new();
+    private string[] dailyLabels = Array.Empty<string>();
+    private readonly ChartOptions chartOptions = new() { YAxisTicks = 1, LineStrokeWidth = 2 };
 
-
-    [Parameter]
-#nullable enable
-    public string? vanity { get; set; }
-#nullable disable
-
-    private bool isLoading { get; set; } = true;
-    private string subTitle = "";
-
-    private ObservableCollection<ClickStatsEntity> clickStatsEntities;
-    private readonly Random _random = new Random();
-    private string dayCount = string.Empty;
-    ClaimsPrincipal User;
-
-    public class ClickData
-    {
-#nullable enable
-        public string? XValue;
-#nullable disable
-        public int YValue;
-    }
-
-    private async Task<ObservableCollection<ClickStatsEntity>> UpdateUIList()
-    {
-        subTitle = (!String.IsNullOrEmpty(vanity)) ? $"Click Stats for: {vanity}" : "All Click Stats";
-        try
-        {
-            CancellationToken cancellationToken = new CancellationToken();
-            using var response = await Http.PostAsJsonAsync("/api/UrlStats", new UrlClickStatsRequest(vanity), cancellationToken);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var jsonResult = await response.Content.ReadAsStringAsync();
-                var clickStatsList = JsonSerializer.Deserialize<ClickStatsEntityList>(jsonResult);
-
-                return new ObservableCollection<ClickStatsEntity>(clickStatsList.ClickStatsList);
-            }
-            switch (response.StatusCode)
-            {
-                case HttpStatusCode.Unauthorized:
-                    NavigationManager.NavigateTo("/unauthorized");
-                    break;
-                default:
-                    NavigationManager.NavigateTo("/404");
-                    break;
-            }
-        }
-        catch (System.Exception ex)
-        {
-            Logger.LogError(ex.ToString());
-        }
-        return null;
-    }
-
-
-
-    protected override async void OnInitialized()
+    protected override async Task OnParametersSetAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        User = authState.User;
-
-        if (User.IsInRole("admin") || Debugger.IsAttached)
+        if (authState.User.IsInRole("admin") || Debugger.IsAttached)
         {
-            clickStatsEntities = await UpdateUIList();
-            this.isLoading = false;
-            StateHasChanged();
-            if (clickStatsEntities != null)
-                dayCount = "Day(s): " + clickStatsEntities.Count.ToString();
+            dateRange = null;
+            await LoadStatistics();
         }
+        else
+            NavigationManager.NavigateTo("/unauthorized");
+    }
+
+    private async Task LoadStatistics()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            using var response = await Http.PostAsJsonAsync("/api/UrlStats", new UrlClickStatsRequest(vanity));
+            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                NavigationManager.NavigateTo("/unauthorized");
+            response.EnsureSuccessStatusCode();
+            var result = await response.Content.ReadFromJsonAsync<ClickStatsEntityList>();
+            clicks = result?.ClickStatsList ?? throw new JsonException("The click statistics response was empty.");
+            ApplyDateRange();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or FormatException or TaskCanceledException)
+        {
+            Logger.LogError(ex, "Unable to load click statistics");
+            errorMessage = "Unable to load click statistics. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ChangeDateRange(DateRange range)
+    {
+        dateRange = range;
+        ApplyDateRange();
+    }
+
+    private void ApplyDateRange()
+    {
+        var start = dateRange?.Start?.Date;
+        var end = dateRange?.End?.Date;
+        filteredClicks = clicks.Where(x =>
+            (!start.HasValue || x.Date.Date >= start.Value) &&
+            (!end.HasValue || x.Date.Date <= end.Value))
+            .ToList();
+        var daily = filteredClicks.GroupBy(x => x.Date.Date).OrderBy(x => x.Key).ToList();
+        dailyLabels = daily.Select(x => x.Key.ToString("MM/dd/yyyy")).ToArray();
+        dailySeries = new()
+        {
+            new TimeSeriesChartSeries
+            {
+                Name = "Click(s) by Day",
+                ShowDataMarkers = true,
+                Data = daily.Select(x => new TimeSeriesChartSeries.TimeValue(x.Key, x.Count())).ToList()
+            }
+        };
     }
 }

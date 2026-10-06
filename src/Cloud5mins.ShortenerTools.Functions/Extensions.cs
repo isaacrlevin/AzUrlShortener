@@ -27,7 +27,8 @@ namespace Cloud5mins.ShortenerTools.Functions
             {
                 if (useOllama)
                 {
-                    builder.AddKeyedOllamaApiClient("chat");
+                    builder.AddOllamaApiClient("chat")
+                        .AddKeyedChatClient("chat");
                     chatClient = builder.Services.BuildServiceProvider().GetRequiredKeyedService<IChatClient>("chat");
                 }
                 else

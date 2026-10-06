@@ -1,26 +1,38 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
 
-<div class="page">
-    <div class="sidebar">
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="@(() => drawerOpen = !drawerOpen)" aria-label="Toggle navigation menu" />
+        <MudText Typo="Typo.h6">Tiny Blazor Admin</MudText>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudText Class="user-name">Hello, @context.User.Identity?.Name!</MudText>
+                <MudButton Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/logout?post_logout_redirect_uri=/", forceLoad: true))">Log out</MudButton>
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/login", forceLoad: true))">Log in</MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
+        <MudButton Color="Color.Inherit" Href="https://github.com/FBoucher/AzUrlShortener" Target="_blank">About</MudButton>
+    </MudAppBar>
+    <MudDrawer @bind-Open="drawerOpen" Variant="DrawerVariant.Responsive" Elevation="1">
         <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <AuthorizeView>
-                <Authorized >
-                        Hello, @context.User.Identity?.Name! 
-                        <a class="nav-link btn btn-link" href="/logout?post_logout_redirect_uri=/">Log out</a>
-                </Authorized>
-                <NotAuthorized>
-                    <a href="/login">Log in</a>
-                </NotAuthorized>
-            </AuthorizeView>
-            <a href="https://github.com/FBoucher/AzUrlShortener" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
+    </MudDrawer>
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-6">
             @Body
-        </article>
-    </main>
-</div>
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool drawerOpen = true;
+}

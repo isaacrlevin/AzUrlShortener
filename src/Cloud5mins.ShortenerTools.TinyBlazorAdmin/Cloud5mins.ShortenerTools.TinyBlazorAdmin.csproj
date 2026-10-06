@@ -8,16 +8,11 @@
         <PublishTrimmed>false</PublishTrimmed>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="BlazorPro.Spinkit" Version="1.2.0"/>
+        <PackageReference Include="MudBlazor" Version="8.15.0"/>
         <PackageReference Include="Microsoft.AspNetCore.App.Internal.Assets" Version="10.0.11"/>
         <PackageReference Include="Microsoft.NET.ILLink.Tasks" Version="10.0.11"/>
         <PackageReference Include="Microsoft.NET.Sdk.WebAssembly.Pack" Version="10.0.11"/>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4"/>
-        <PackageReference Include="Syncfusion.Blazor.Calendars" Version="29.1.33"/>
-        <PackageReference Include="Syncfusion.Blazor.Inputs" Version="29.1.33"/>
-        <PackageReference Include="Syncfusion.Blazor.Charts" Version="29.1.33"/>
-        <PackageReference Include="Syncfusion.Blazor.Grid" Version="29.1.33"/>
-        <PackageReference Include="Syncfusion.Blazor.Spinner" Version="29.1.33"/>
         <PackageReference Include="AnthonyChu.AzureStaticWebApps.Blazor.Authentication" Version="0.0.2-preview"/>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.11"/>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.11"/>

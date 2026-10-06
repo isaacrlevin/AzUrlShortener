@@ -1,0 +1,10 @@
+{
+  "name": "az-url-shortener-local-dev",
+  "private": true,
+  "devDependencies": {
+    "@azure/static-web-apps-cli": "2.0.10"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

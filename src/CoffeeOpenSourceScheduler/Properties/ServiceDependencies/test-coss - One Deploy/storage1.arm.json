@@ -36,7 +36,7 @@
     },
     {
       "type": "Microsoft.Resources/deployments",
-      "name": "[concat(parameters('resourceGroupName'), 'Deployment', uniqueString(concat('coffeeandopensource', subscription().subscriptionId)))]",
+      "name": "[concat(parameters('resourceGroupName'), 'Deployment', uniqueString(concat('coffeeandopensource9053', subscription().subscriptionId)))]",
       "resourceGroup": "[parameters('resourceGroupName')]",
       "apiVersion": "2019-10-01",
       "dependsOn": [
@@ -50,11 +50,11 @@
           "resources": [
             {
               "sku": {
-                "name": "Standard_RAGRS",
+                "name": "Standard_LRS",
                 "tier": "Standard"
               },
               "kind": "StorageV2",
-              "name": "coffeeandopensource",
+              "name": "coffeeandopensource9053",
               "type": "Microsoft.Storage/storageAccounts",
               "location": "[parameters('resourceLocation')]",
               "apiVersion": "2017-10-01"
