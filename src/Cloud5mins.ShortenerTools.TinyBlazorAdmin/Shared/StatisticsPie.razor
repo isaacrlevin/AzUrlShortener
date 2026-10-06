@@ -22,8 +22,21 @@
 
     protected override void OnParametersSet()
     {
-        var groups = Clicks.GroupBy(x => Category(x) ?? "Unknown").ToList();
-        labels = groups.Select(x => x.Key).ToArray();
-        counts = groups.Select(x => (double)x.Count()).ToArray();
+        var groups = Clicks
+            .GroupBy(x => Category(x) ?? "Unknown")
+            .Select(x => new { Label = x.Key, Count = x.Count() })
+            .OrderByDescending(x => x.Count)
+            .ThenBy(x => x.Label, StringComparer.Ordinal)
+            .ToList();
+        var topGroups = groups.Take(10).ToList();
+        var otherCount = groups.Skip(10).Sum(x => x.Count);
+
+        labels = topGroups.Select(x => x.Label).ToArray();
+        counts = topGroups.Select(x => (double)x.Count).ToArray();
+        if (otherCount > 0)
+        {
+            labels = labels.Append("Other").ToArray();
+            counts = counts.Append((double)otherCount).ToArray();
+        }
     }
 }
