@@ -1,29 +1,14 @@
-@using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject NavigationManager Navigation
 
-<section>
-    <div class="container">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="error-template">
-                    <h1>Oops!</h1>
-                    <h2>401 Unauthorized</h2>
-                    <AuthorizeView>
-                      <Authorized>
-                        <div class="error-details">
-                                Sorry, you are not authorized to access this resource.
-                        </div>
-                      </Authorized>  
-                      <NotAuthorized>
-                            <div class="error-details">
-                                Sorry, please get authenticated.
-                            </div>
-                      </NotAuthorized>  
-                    </AuthorizeView>
-                    <a class="btn btn-link" href="/">Return Home</a>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-</section>
+<h1>Oops!</h1>
+<MudText Typo="Typo.h5">401 Unauthorized</MudText>
+<AuthorizeView>
+    <Authorized>
+        <MudAlert Severity="Severity.Error">Sorry, you are not authorized to access this resource.</MudAlert>
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Warning">Sorry, please get authenticated.</MudAlert>
+        <MudButton OnClick="@(() => Navigation.NavigateTo("/login", forceLoad: true))" Color="Color.Primary">Log in</MudButton>
+    </NotAuthorized>
+</AuthorizeView>
+<MudButton Href="/">Return Home</MudButton>

@@ -3,11 +3,12 @@
   "configurations": {
     "AzUrlShortener": {
       "appLocation": "Cloud5mins.ShortenerTools.TinyBlazorAdmin",
-      "apiLocation": "Cloud5mins.ShortenerTools.Functions",
-      "outputLocation": "bin/Debug/net6.0/wwwroot",
-      "appBuildCommand": "dotnet publish -c Release -o bin",
+      "outputLocation": "bin/Release/net10.0/publish/wwwroot",
+      "appBuildCommand": "dotnet publish -c Release",
       "apiBuildCommand": "dotnet publish -c Release",
-      "run": "dotnet watch run"
+      "appDevserverUrl": "http://localhost:5000",
+      "apiDevserverUrl": "http://localhost:7071",
+      "swaConfigLocation": "Cloud5mins.ShortenerTools.TinyBlazorAdmin"
     }
   }
 }

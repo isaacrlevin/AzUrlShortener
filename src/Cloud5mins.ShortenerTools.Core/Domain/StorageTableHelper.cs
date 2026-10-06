@@ -1,5 +1,6 @@
 using Azure;
 using Azure.Data.Tables;
+using Cloud5mins.ShortenerTools.Core.Messages;
 using System.Text.Json;
 
 namespace Cloud5mins.ShortenerTools.Core.Domain
@@ -66,15 +67,22 @@ namespace Cloud5mins.ShortenerTools.Core.Domain
 
         public async Task<(List<ShortUrlEntity> Items, int TotalCount)> GetShortUrlEntitiesPaged(int skip, int take)
         {
+            var result = await GetShortUrlEntitiesPaged(new UrlListQuery { Skip = skip, Take = take });
+            return (result.UrlList, result.TotalCount);
+        }
+
+        /// <summary>Returns a filtered and sorted page of active links.</summary>
+        /// <param name="query">Paging, sorting, and filtering options.</param>
+        /// <returns>The requested links and matching count.</returns>
+        public async Task<ListResponse> GetShortUrlEntitiesPaged(UrlListQuery query)
+        {
+            query.Validate();
             var tableClient = GetUrlsTable();
-            List<ShortUrlEntity> lstShortUrl = new List<ShortUrlEntity>();
-            Pageable<ShortUrlEntity> queryResultsLINQ = tableClient.Query<ShortUrlEntity>(ent => !ent.IsArchived && ent.RowKey != "KEY");
-
-            var allItems = queryResultsLINQ.OrderByDescending(x => x.Timestamp).ToList();
-            var totalCount = allItems.Count;
-            var pagedItems = allItems.Skip(skip).Take(take).ToList();
-
-            return (pagedItems, totalCount);
+            var items = new List<ShortUrlEntity>();
+            // Table Storage orders by keys only; arbitrary column sorts require a server-side scan.
+            await foreach (var item in tableClient.QueryAsync<ShortUrlEntity>(ent => !ent.IsArchived && ent.RowKey != "KEY"))
+                items.Add(item);
+            return query.Apply(items);
         }
 
         /// <summary>

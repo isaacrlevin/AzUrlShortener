@@ -22,6 +22,12 @@ Features:
 - Extensible for more enterprise-friendly configurations
 - Simple step by step deployment. 
 
+## Local Development
+
+Run Functions and TinyBlazorAdmin together with `shortenerTools.AppHost`. Aspire manages the application processes, Azurite, Ollama, and a repository-pinned Azure Static Web Apps CLI for local API routing and mock authentication.
+
+See [local development and debugging instructions](./src/Cloud5mins.ShortenerTools.TinyBlazorAdmin/README.md#local-development-and-debugging-with-aspire) for prerequisites, first-time setup, and F5 debugging. Open the **swa** dashboard endpoint and sign in with the `admin` role.
+
 ## How To Deploy
 
 👉 **[Step by Step Deployment](https://github.com/microsoft/AzUrlShortener/wiki/How-to-deploy-your-AzUrlShortener)** (wiki pages) 👈 documentation is available here. If you would like to used the TinyBlazorAdmin as frontend (suggested) **you must first** follow the [steps to follow for TinyBlazorAdmin](https://github.com/microsoft/AzUrlShortener/wiki/How-to-deploy-TinyBlazorAdmin).
@@ -138,5 +144,4 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 [ThumbnailYTAzUrlShortener_EN]: https://github.com/microsoft/AzUrlShortener/raw/main/Media/ThumbnailYTAzUrlShortener_EN.png
 [glo]: https://github.com/microsoft/AzUrlShortener/raw/main/Media/glo-board_screenshot.png
 [AzFunctionGitSync]: https://github.com/microsoft/AzUrlShortener/raw/main/Media/AzFunctionGitSync.png
-
 

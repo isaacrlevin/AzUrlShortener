@@ -25,6 +25,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace Cloud5mins.ShortenerTools.Functions
 {
@@ -53,14 +54,16 @@ namespace Cloud5mins.ShortenerTools.Functions
 
             try
             {
-                // Get paging parameters from query string
                 var query = System.Web.HttpUtility.ParseQueryString(req.Url.Query);
-                int skip = int.TryParse(query["skip"], out var s) ? s : 0;
-                int take = int.TryParse(query["take"], out var t) ? t : 100;
+                var options = query["query"] is string json
+                    ? JsonSerializer.Deserialize<UrlListQuery>(json) ?? throw new ArgumentException("A URL list query is required.")
+                    : new UrlListQuery
+                    {
+                        Skip = query["skip"] == null ? 0 : int.Parse(query["skip"]!),
+                        Take = query["take"] == null ? 100 : int.Parse(query["take"]!)
+                    };
 
-                var (items, totalCount) = await stgHelper.GetShortUrlEntitiesPaged(skip, take);
-                result.UrlList = items;
-                result.TotalCount = totalCount;
+                result = await stgHelper.GetShortUrlEntitiesPaged(options);
 
                 var host = string.IsNullOrEmpty(_settings.CustomDomain) ? req.Url.Host : _settings.CustomDomain;
                 foreach (ShortUrlEntity url in result.UrlList)
