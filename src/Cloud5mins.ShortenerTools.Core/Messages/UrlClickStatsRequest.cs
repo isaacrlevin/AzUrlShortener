@@ -1,10 +1,23 @@
 namespace Cloud5mins.ShortenerTools.Core.Messages
 {
+    /// <summary>Selects click statistics for all links or a single vanity.</summary>
     public class UrlClickStatsRequest
     {
-        public string Vanity { get; set; }
+        /// <summary>Gets or sets the vanity; omitted or empty values select all links.</summary>
+        public string? Vanity { get; set; }
 
-        public UrlClickStatsRequest(string vanity)
+        /// <summary>Gets or sets the inclusive first calendar date, in yyyy-MM-dd format.</summary>
+        public string? StartDate { get; set; }
+
+        /// <summary>Gets or sets the inclusive last calendar date, in yyyy-MM-dd format.</summary>
+        public string? EndDate { get; set; }
+
+        /// <summary>Gets or sets the display time zone; omitted values use the server's local zone.</summary>
+        public string? TimeZoneId { get; set; }
+
+        /// <summary>Creates a request compatible with the existing raw statistics endpoint.</summary>
+        /// <param name="vanity">The optional short URL vanity.</param>
+        public UrlClickStatsRequest(string? vanity)
         {
             Vanity = vanity;
         }

@@ -79,6 +79,7 @@ else
     private DateRange dateRange;
     private List<TimeSeriesChartSeries> dailySeries = new();
     private string[] dailyLabels = Array.Empty<string>();
+    private int loadVersion;
     private readonly ChartOptions chartOptions = new() { YAxisTicks = 1, LineStrokeWidth = 2 };
 
     protected override async Task OnParametersSetAsync()
@@ -93,35 +94,71 @@ else
             NavigationManager.NavigateTo("/unauthorized");
     }
 
-    private async Task LoadStatistics()
+    private Task LoadStatistics() => UpdateStatistics(reloadClicks: true);
+
+    private async Task UpdateStatistics(bool reloadClicks)
     {
+        var version = ++loadVersion;
+        var request = new UrlClickStatsRequest(vanity)
+        {
+            StartDate = dateRange?.Start?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+            EndDate = dateRange?.End?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+            TimeZoneId = TimeZoneInfo.Local.Id
+        };
         isLoading = true;
         errorMessage = null;
         try
         {
-            using var response = await Http.PostAsJsonAsync("/api/UrlStats", new UrlClickStatsRequest(vanity));
-            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            if (reloadClicks)
+            {
+                using var response = await Http.PostAsJsonAsync("/api/UrlStats", new UrlClickStatsRequest(vanity));
+                if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                    NavigationManager.NavigateTo("/unauthorized");
+                response.EnsureSuccessStatusCode();
+                var result = await response.Content.ReadFromJsonAsync<ClickStatsEntityList>();
+                if (version != loadVersion)
+                    return;
+                clicks = result?.ClickStatsList ?? throw new JsonException("The click statistics response was empty.");
+            }
+
+            using var dailyResponse = await Http.PostAsJsonAsync("/api/UrlClickStatsByDay", request);
+            if (dailyResponse.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
                 NavigationManager.NavigateTo("/unauthorized");
-            response.EnsureSuccessStatusCode();
-            var result = await response.Content.ReadFromJsonAsync<ClickStatsEntityList>();
-            clicks = result?.ClickStatsList ?? throw new JsonException("The click statistics response was empty.");
+            dailyResponse.EnsureSuccessStatusCode();
+            var dailyResult = await dailyResponse.Content.ReadFromJsonAsync<ClickDateList>()
+                ?? throw new JsonException("The daily statistics response was empty.");
+            if (version != loadVersion)
+                return;
             ApplyDateRange();
+            dailyLabels = dailyResult.Items.Select(x => x.DateClicked.ToString("MM/dd/yyyy")).ToArray();
+            dailySeries = new()
+            {
+                new TimeSeriesChartSeries
+                {
+                    Name = "Click(s) by Day",
+                    ShowDataMarkers = true,
+                    Data = dailyResult.Items.Select(x =>
+                        new TimeSeriesChartSeries.TimeValue(x.DateClicked, x.Count)).ToList()
+                }
+            };
         }
         catch (Exception ex) when (ex is HttpRequestException or JsonException or FormatException or TaskCanceledException)
         {
             Logger.LogError(ex, "Unable to load click statistics");
-            errorMessage = "Unable to load click statistics. Please try again.";
+            if (version == loadVersion)
+                errorMessage = "Unable to load click statistics. Please try again.";
         }
         finally
         {
-            isLoading = false;
+            if (version == loadVersion)
+                isLoading = false;
         }
     }
 
-    private void ChangeDateRange(DateRange range)
+    private async Task ChangeDateRange(DateRange range)
     {
         dateRange = range;
-        ApplyDateRange();
+        await UpdateStatistics(reloadClicks: false);
     }
 
     private void ApplyDateRange()
@@ -132,16 +169,5 @@ else
             (!start.HasValue || x.Date.Date >= start.Value) &&
             (!end.HasValue || x.Date.Date <= end.Value))
             .ToList();
-        var daily = filteredClicks.GroupBy(x => x.Date.Date).OrderBy(x => x.Key).ToList();
-        dailyLabels = daily.Select(x => x.Key.ToString("MM/dd/yyyy")).ToArray();
-        dailySeries = new()
-        {
-            new TimeSeriesChartSeries
-            {
-                Name = "Click(s) by Day",
-                ShowDataMarkers = true,
-                Data = daily.Select(x => new TimeSeriesChartSeries.TimeValue(x.Key, x.Count())).ToList()
-            }
-        };
     }
 }
