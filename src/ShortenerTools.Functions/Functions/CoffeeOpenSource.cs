@@ -20,7 +20,7 @@ public sealed class CoffeeOpenSource(
     private bool PostingAllowed => settings.ExternalPostingAllowed && settings.PostSocials;
 
     [Function("COSSTeaserTimer")]
-    public async Task PostCOSSTeaserTimer([TimerTrigger("0 0 17 * * MON")] TimerInfo timer)
+    public async Task COSSTeaserTimer([TimerTrigger("0 0 17 * * MON")] TimerInfo timer)
     {
         if (!Debugger.IsAttached)
         {
@@ -38,7 +38,7 @@ public sealed class CoffeeOpenSource(
     }
 
     [Function("COSSArchiveTimer")]
-    public async Task PostCOSSArchiveTimer([TimerTrigger("0 0 16 * * MON")] TimerInfo timer)
+    public async Task COSSArchiveTimer([TimerTrigger("0 0 16 * * MON")] TimerInfo timer)
     {
         if (!Debugger.IsAttached)
         {

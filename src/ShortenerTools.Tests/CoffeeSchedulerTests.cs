@@ -40,14 +40,14 @@ public sealed class CoffeeSchedulerTests
         string environment, bool postSocials, bool disabled)
     {
         var service = CreateService(environment, postSocials, disabled);
-        await service.PostTeaserTimer(null!);
-        await service.PostAnnouncementTimer(null!);
-        await service.PostArchiveTimer(null!);
-        await service.PostTeaserHttp(null!);
-        await service.PostAnnouncementHttp(null!);
-        await service.PostArchiveHttp(null!);
+        await service.COSSTeaserTimer(null!);
+        await service.COSSAnnouncementTimer(null!);
+        await service.COSSArchiveTimer(null!);
+        await service.COSSTeaserHttp(null!);
+        await service.COSSAnnouncementHttp(null!);
+        await service.COSSArchiveHttp(null!);
         using var request = new FunctionRequest("\"jane-doe\"");
-        var response = await service.PostPublishHttp(request.Request);
+        var response = await service.COSSPublishHttp(request.Request);
         Assert.AreEqual(HttpStatusCode.Forbidden, response.StatusCode);
         _feed.VerifyNoOtherCalls();
         _publisher.VerifyNoOtherCalls();
@@ -62,7 +62,7 @@ public sealed class CoffeeSchedulerTests
         _publisher.Setup(p => p.PublishAsync(It.IsAny<SocialPost>(), true))
             .Callback<SocialPost, bool>((post, _) => posted = post).Returns(Task.CompletedTask);
 
-        await CreateService().PostTeaserTimer(null!);
+        await CreateService().COSSTeaserTimer(null!);
 
         Assert.IsNotNull(posted);
         Assert.AreEqual("nearest", posted.Key);
@@ -75,7 +75,7 @@ public sealed class CoffeeSchedulerTests
     public async Task Announcement_OutsideThreeHourWindow_DoesNotPublish()
     {
         SetGuests(CreateGuest("boundary", Now.AddHours(3)), CreateGuest("now", Now));
-        await CreateService().PostAnnouncementTimer(null!);
+        await CreateService().COSSAnnouncementTimer(null!);
         _publisher.VerifyNoOtherCalls();
     }
 
@@ -86,7 +86,7 @@ public sealed class CoffeeSchedulerTests
         _publisher.Setup(p => p.PublishAsync(It.Is<SocialPost>(post =>
             post.Url == "https://www.twitch.tv/isaacrlevin" && post.Text.Contains("Streaming live today")), true))
             .Returns(Task.CompletedTask);
-        await CreateService().PostAnnouncementTimer(null!);
+        await CreateService().COSSAnnouncementTimer(null!);
         _publisher.VerifyAll();
     }
 
@@ -94,7 +94,7 @@ public sealed class CoffeeSchedulerTests
     public async Task Archive_EmptyPublishedList_DoesNotPublish()
     {
         SetGuests(CreateGuest());
-        await CreateService().PostArchiveTimer(null!);
+        await CreateService().COSSArchiveTimer(null!);
         _publisher.VerifyNoOtherCalls();
     }
 
@@ -104,7 +104,7 @@ public sealed class CoffeeSchedulerTests
         SetGuests(CreateGuest("unpublished"), CreateGuest(published: true));
         _publisher.Setup(p => p.PublishAsync(It.Is<SocialPost>(post =>
             post.Key == "jane-doe" && post.Url.EndsWith("/guest/jane-doe.html")), true)).Returns(Task.CompletedTask);
-        await CreateService().PostArchiveTimer(null!);
+        await CreateService().COSSArchiveTimer(null!);
         _publisher.VerifyAll();
     }
 
@@ -116,7 +116,7 @@ public sealed class CoffeeSchedulerTests
     public async Task Publish_InvalidGuestKey_ReturnsBadRequestWithoutFeedAccess(string body)
     {
         using var request = new FunctionRequest(body);
-        var response = await CreateService().PostPublishHttp(request.Request);
+        var response = await CreateService().COSSPublishHttp(request.Request);
         Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
         _feed.VerifyNoOtherCalls();
         _publisher.VerifyNoOtherCalls();
@@ -127,7 +127,7 @@ public sealed class CoffeeSchedulerTests
     {
         SetGuests(CreateGuest());
         using var request = new FunctionRequest("\"jane-doe\"");
-        var response = await CreateService().PostPublishHttp(request.Request);
+        var response = await CreateService().COSSPublishHttp(request.Request);
         Assert.AreEqual(HttpStatusCode.NotFound, response.StatusCode);
         _publisher.VerifyNoOtherCalls();
     }
@@ -139,7 +139,7 @@ public sealed class CoffeeSchedulerTests
         _publisher.Setup(p => p.PublishAsync(It.Is<SocialPost>(post =>
             post.Key == "jane-doe" && post.Text.Contains("Video is live on YouTube")), true)).Returns(Task.CompletedTask);
         using var request = new FunctionRequest("\"jane-doe\"");
-        var response = await CreateService().PostPublishHttp(request.Request);
+        var response = await CreateService().COSSPublishHttp(request.Request);
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.AreEqual("\"Complete\"", await request.ReadBody());
         _publisher.VerifyAll();
@@ -205,9 +205,9 @@ public sealed class CoffeeSchedulerTests
         Assert.AreEqual(expected, CoffeePostFactory.DaySuffix(day));
 
     [TestMethod]
-    [DataRow(nameof(CoffeeOpenSource.PostTeaserTimer), "0 0 17 * * MON")]
-    [DataRow(nameof(CoffeeOpenSource.PostAnnouncementTimer), "0 0 17 * * *")]
-    [DataRow(nameof(CoffeeOpenSource.PostArchiveTimer), "0 0 16 * * MON")]
+    [DataRow(nameof(CoffeeOpenSource.COSSTeaserTimer), "0 0 17 * * MON")]
+    [DataRow(nameof(CoffeeOpenSource.COSSAnnouncementTimer), "0 0 17 * * *")]
+    [DataRow(nameof(CoffeeOpenSource.COSSArchiveTimer), "0 0 16 * * MON")]
     public void Timers_MigratedFunctions_PreserveNamesAndUtcSchedules(string methodName, string schedule)
     {
         var method = typeof(CoffeeOpenSource).GetMethod(methodName)!;

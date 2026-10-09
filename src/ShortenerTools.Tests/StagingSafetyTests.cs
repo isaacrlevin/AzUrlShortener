@@ -46,6 +46,6 @@ public class StagingSafetyTests
         var service = new SchedulePost(settings, null!);
 
         Assert.AreEqual("https://staging.example/", service.ShortenerBase);
-        await service.SchedulePostTimer(null!);
+        await service.ShortPostTimer(null!);
     }
 }
