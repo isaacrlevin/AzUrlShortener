@@ -1,6 +1,6 @@
 # Azure Url Shortener (AzUrlShortener)
 
-[![Deploy to Azure](https://img.shields.io/badge/Deploy%20To-Azure-blue?logo=microsoft-azure)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fmicrosoft%2FAzUrlShortener%2Fmain%2Fsrc%2Fdeployment%2FazureDeploy.json)
+[![Deploy to Azure](https://img.shields.io/badge/Deploy%20To-Azure-blue?logo=microsoft-azure)](./doc/azure-container-apps-migration.md)
 [![Serverless Library](https://img.shields.io/badge/Serverless%20Library-%E2%9C%94%EF%B8%8Fyes-blue?style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAMAAADzN3VRAAACx1BMVEUAAAAAAAAAAP8Af38AVaoAf78AVaoAbbYAXLkAc7kAZqoAWqUAY7gAZrIAZa4AYKwAY7QAZ7YAZ7MAZ7UAZLMAY7MAZLUAZrIAZLcAY7QAZrIAZLMAZLYAZ7YAZLYAZrcAZbgAZLMAZ7YAZbIAZLQAYrMAY7UAZLUAZLYAZbQAZrcAZbMAZbgAZbQAZrQAZrgAZrcAZbgAaLkAZbUAZbYAZ7YAZbUAZrUAZ7YAZ7cAZbcAZrcAZ7cAZrcAZ7cAZrcAZrcAZbcAZ7YAZ7cAZrcAZrYAZrcAZbYAZrcAZ7cAZrYAZrcAZrcAZ7cAZ7gAZrcAZrcAZ7cAZ7gAZ7gBaLcCaLcDabgEaLYFabUGarQGa7oHarMIbLoKbbsMbrsOb7wPcLwQcb0Rcb0SbawTcr0Xdb4Ydb8Zdr8dc6UeecEfdKQgcqMhe8Eic6IkdqEkfcIndJ4of8MqeJ0rgcQsdpsseZwxhMY2eZQ3iMc7fZI7gJJBjstCfYxGkcxHkcxMh4hNlc5TmM9VioFVmtBYnNFZnNFbndFbntFcntFcntJdn9Jfh3lhodNiodNnpNVopdVsi3Bsp9Ztj3BulXFuqdZuqddwqtd0mG11mG12j2l7mml9kWWGn2KMlluUpVmWpliaqFWpoEeusEivokOz0uq31Ou51eu61uy7pju81+2/2O3BqDfB2u7C2u7C2+7DqTbD2+7EuTrF3O/F3e/G3e/H3e/H3u/ItTbKqzLKuzbL4PDOsjDOvTTW5vTb6vXdwyrgsyPg7ffitCLk7/jm8PjqyCLq8/ns9PrttxrwuBjxuBfyzB3zvBfzzBzz+Pz0uRb1uRX1+fz2+v33+v34+/35uxL5/P36/P77wxP70Bf7/f78yhT8yxT8zBX8zRX8zhX8zxb80Bb8/f79vA/9vQ/9vhD9vxD9wBH9whH9xBL9xhP9xxP9yBOZ2sNJAAAAU3RSTlMAAQECAwQGBwsLDxESFCMlKSovOz1AQkNHSFBRUVFUVVpbW11gYmRlZmdoaWlqbXByc3V5e36AgYOIubrBysvR09XX2drd3ub2+vv7/Pz8/f7+/mxm4TkAAAHCSURBVHgBXcz1U1VBHEDxr90d2N2KLYbYAbZwVAzB7g6xOxS7OzCwu8UQFVtEBUMxWFeeoX+Ee5e5bxg+v56ZI155itesX80nl6STpYJ/EI5uzUplShsKtwVGP4+LexEff7hlQfHy7YKxU6kkrZ+NI7CsG2pj3VLql9YbgZ5lxCraHRjJDKW+an2qzwgg0A6zdQSWvhm/V6nf+tXkWS/nAi0ymFILWJEY0fuuSv6hd8H21wuA0qa0hrXvVzJHqb/6egiwKWERNBfJBxtM4IBSKfpJTEzM8b7rExbTOadUZNunCOj3UH3+6fF49NuZsC5xOT7SaOv3VcBCZSXpPRir3y2rIk1vx4YBS/ZHRh5SynMuBCP0wbE64jfl8clQrC3q39MJGGFno4dXlcqEPzqRmi4kp6yx4XT0UIpJAZgWe3QgMPbjn4M2nLk6hB65RdrDpHtRJu34dn8YMOj85cHgLyJ1gTF3jvTnxod5Trh0xQTKmZIjABh1MXzil30Y86Oc0CazGCWDcOy+OQBXp0JiNcZxbTpe1SVVRr9gmLoZV1df8SoRwOxebuhQRNLIXq8dVnCrGlklnfyVGjZpUD6vuP4DQn3cxeG842QAAAAASUVORK5CYII=)](https://serverlesslibrary.net/sample/1c809aa2-2d4f-4fee-bc27-0c2c36844ac8)
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-23-orange.svg?style=flat-square)](#contributors-)
@@ -30,27 +30,27 @@ Daily counts are available through `POST /api/UrlClickStatsByDay` with optional 
 
 Archived short links now redirect to the configured `DefaultRedirectUrl` (or the existing `https://isaaclevin.com` fallback) without recording a click. Active-link analytics, bot handling, and social metadata are unchanged.
 
-Regression tests can be run with `dotnet test src\Cloud5mins.ShortenerTools.Tests\Cloud5mins.ShortenerTools.Tests.csproj`.
+Regression tests can be run with `dotnet test src\ShortenerTools.Tests\ShortenerTools.Tests.csproj`.
 
-Run Functions and TinyBlazorAdmin together with `shortenerTools.AppHost`. Aspire manages the application processes, Azurite, Ollama, and a repository-pinned Azure Static Web Apps CLI for local API routing and mock authentication.
+Run the public redirect, private management API, scheduler, and server-hosted Admin together with `ShortenerTools.AppHost`. Aspire manages the application processes, Azurite, and local Ollama. The admin uses Microsoft Entra authentication, not SWA mock authentication.
 
-See [local development and debugging instructions](./src/Cloud5mins.ShortenerTools.TinyBlazorAdmin/README.md#local-development-and-debugging-with-aspire) for prerequisites, first-time setup, and F5 debugging. Open the **swa** dashboard endpoint and sign in with the `admin` role.
+See [local development and debugging instructions](./src/ShortenerTools.Admin/README.md#local-development-and-debugging-with-aspire) for prerequisites and F5 debugging. Open the **admin HTTPS** dashboard endpoint and sign in with your configured administrator account.
 
 ## How To Deploy
 
-👉 **[Step by Step Deployment](https://github.com/microsoft/AzUrlShortener/wiki/How-to-deploy-your-AzUrlShortener)** (wiki pages) 👈 documentation is available here. If you would like to used the TinyBlazorAdmin as frontend (suggested) **you must first** follow the [steps to follow for TinyBlazorAdmin](https://github.com/microsoft/AzUrlShortener/wiki/How-to-deploy-TinyBlazorAdmin).
+Follow the [Container Apps deployment and migration guide](./doc/azure-container-apps-migration.md) for Entra setup, existing Table Storage, Aspire deployment, GitHub Actions inputs, custom-domain cutover, rollback, and costs. This branch deploys to Azure Container Apps, not Static Web Apps or an Azure Functions hosting resource. The public redirect stays at one replica; admin and management API can scale to zero.
 
-If you want to **Update** or **Upgrade**, please refer to [this page](https://github.com/microsoft/AzUrlShortener/wiki/How-to-Update---Upgrade) (wiki pages). 
+For manual production workflow setup, secure import of local social/email and AI settings, and the default-disabled scheduler cutover, see [production deployment](./doc/production-deployment.md). Pushes validate only; production deployment is an intentional manual run from `main`.
 
 ## How To Use It
 
 AzUrlShortener is an API that doesn't have any admin UI by default. There are many different ways to manage your Short Urls, from a direct HTTP call to a fancy website. 
 
-We suggest [Tiny Blazor Admin](./src/Cloud5mins.ShortenerTools.TinyBlazorAdmin/README.md); it's a static website. 
+Use [Admin](./src/ShortenerTools.Admin/README.md), a server-hosted Blazor website restricted to your Entra administrator identity.
 
-![Tiny Blazor Admin looks](/Media/TinyBlazorAdmin.gif)
+![Admin looks](/Media/TinyBlazorAdmin.gif)
 
-By default, without any specific Admin tool, you can use an API client like [Postman](https://www.postman.com/) or a plugin to VSCode like [REST Client](https://marketplace.visualstudio.com/items?itemName=humao.rest-client). We've included simple API calls via a postman collection and environment [here](./src/tools).
+Management APIs are internal to the Container Apps environment and require the server-side API key. The [Postman examples](./src/tools) can still be used against the local management API with `X-Admin-Api-Key`; they are not public production endpoints.
 
 You can also directly update the tables in storage using [Azure Storage Explorer](https://github.com/microsoft/AzUrlShortener/wiki/How-to-Use-Azure-Storage-Explorer-as-Admin-Tools-for-AzUrlShortener). 
 
@@ -64,7 +64,7 @@ There is also a videos that explains a bit how things works and does a quick tou
 
 | Cloud 5 Mins | Azure Friday |
 | ---          | --- |
-| [![Tiny Blazor Admin looks](/Media/AzUrlShortener_preview.gif)](https://youtu.be/fzXy2D77WMM) | [![Azure Friday](/Media/AzureFriday_preview.gif)](https://learn.microsoft.com/en-us/shows/azure-friday/azurlshortener-an-open-source-budget-friendly-url-shortener)  |
+| [![Admin looks](/Media/AzUrlShortener_preview.gif)](https://youtu.be/fzXy2D77WMM) | [![Azure Friday](/Media/AzureFriday_preview.gif)](https://learn.microsoft.com/en-us/shows/azure-friday/azurlshortener-an-open-source-budget-friendly-url-shortener)  |
 
 
 ---
@@ -77,7 +77,7 @@ We are always trying to make it better. See the [AzUrlShortener project](https:/
 You are invited to go into the [Discussion](https://github.com/microsoft/AzUrlShortener/discussions) tab to share your feedback, ask question, and suggest new feature!
 
 Current Backlog contains:
-- A deployment option with everything combined into TinyBlazorAdmin
+- A deployment option with everything combined into Admin
 - More Statistics
 - QR Code
 - More tracking information (like Country)
@@ -104,7 +104,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
   <tbody>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/surlydev"><img src="https://avatars1.githubusercontent.com/u/880671?v=4?s=100" width="100px;" alt="SurlyDev"/><br /><sub><b>SurlyDev</b></sub></a><br /><a href="#ideas-surlydev" title="Ideas, Planning, & Feedback">🤔</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="http://cloud5mins.com"><img src="https://avatars3.githubusercontent.com/u/2404846?v=4?s=100" width="100px;" alt="Frank Boucher"/><br /><sub><b>Frank Boucher</b></sub></a><br /><a href="https://github.com/microsoft/AzUrlShortener/commits?author=FBoucher" title="Code">💻</a> <a href="#video-FBoucher" title="Videos">📹</a> <a href="https://github.com/microsoft/AzUrlShortener/issues?q=author%3AFBoucher" title="Bug reports">🐛</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/FBoucher"><img src="https://avatars3.githubusercontent.com/u/2404846?v=4?s=100" width="100px;" alt="Frank Boucher"/><br /><sub><b>Frank Boucher</b></sub></a><br /><a href="https://github.com/microsoft/AzUrlShortener/commits?author=FBoucher" title="Code">💻</a> <a href="#video-FBoucher" title="Videos">📹</a> <a href="https://github.com/microsoft/AzUrlShortener/issues?q=author%3AFBoucher" title="Bug reports">🐛</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/AK0785"><img src="https://avatars1.githubusercontent.com/u/40241010?v=4?s=100" width="100px;" alt="AKER"/><br /><sub><b>AKER</b></sub></a><br /><a href="#ideas-AK0785" title="Ideas, Planning, & Feedback">🤔</a></td>
       <td align="center" valign="top" width="14.28%"><a href="http://baaijte.net"><img src="https://avatars3.githubusercontent.com/u/1761079?v=4?s=100" width="100px;" alt="Vincent Baaij"/><br /><sub><b>Vincent Baaij</b></sub></a><br /><a href="https://github.com/microsoft/AzUrlShortener/commits?author=vnbaaij" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/kmm7"><img src="https://avatars3.githubusercontent.com/u/13196402?v=4?s=100" width="100px;" alt="kmm7"/><br /><sub><b>kmm7</b></sub></a><br /><a href="https://github.com/microsoft/AzUrlShortener/commits?author=kmm7" title="Code">💻</a> <a href="#ideas-kmm7" title="Ideas, Planning, & Feedback">🤔</a></td>

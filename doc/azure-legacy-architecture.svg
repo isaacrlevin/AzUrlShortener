@@ -1,0 +1,199 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">AzUrlShortener legacy Azure Static Web Apps and Functions architecture</title>
+  <desc id="desc">Historical pre-migration Azure architecture. A Standard Azure Static Web App serves the Blazor WebAssembly admin and routes API requests through a linked Azure Functions backend. Short-link visitors call the same Function App directly for redirects. One Consumption Y1 Function App handles redirect, admin API, and scheduled timer functions, using Azure Storage Standard LRS for data and Functions runtime state. Classic Application Insights collects telemetry. This illustrates the legacy design, not current production status.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#081321"/>
+      <stop offset="1" stop-color="#101e31"/>
+    </linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#102d43"/>
+      <stop offset="1" stop-color="#14283a"/>
+    </linearGradient>
+    <linearGradient id="azure" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10263a"/>
+      <stop offset="1" stop-color="#0c1c2c"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000814" flood-opacity=".3"/>
+    </filter>
+    <marker id="arrow-cyan" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#44d6df"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#60a5fa"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#c4a2ff"/>
+    </marker>
+    <marker id="arrow-amber" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#f6bd60"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", Arial, sans-serif; fill: #edf4fb; }
+      .eyebrow { font-size: 14px; font-weight: 700; letter-spacing: 2px; fill: #8ca5ba; }
+      .title { font-size: 39px; font-weight: 700; letter-spacing: -.6px; }
+      .subtitle { font-size: 18px; fill: #a9bdcf; }
+      .section { font-size: 15px; font-weight: 700; letter-spacing: 1.5px; fill: #96aec2; }
+      .card-title { font-size: 18px; font-weight: 700; }
+      .card-sub { font-size: 13px; fill: #a9bdcf; }
+      .detail { font-size: 13px; fill: #d1deea; }
+      .small { font-size: 12px; fill: #a9bdcf; }
+      .tiny { font-size: 11px; fill: #a9bdcf; }
+      .tag { font-size: 11px; font-weight: 700; letter-spacing: .8px; }
+      .line-label { font-size: 11px; font-weight: 600; paint-order: stroke; stroke: #0b1827; stroke-width: 6px; stroke-linejoin: round; }
+      .new { fill: #10253a; stroke: #317c96; stroke-width: 1.5; }
+      .existing { fill: #14253a; stroke: #77869a; stroke-width: 1.5; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <circle cx="1660" cy="70" r="220" fill="#1a5263" opacity=".08"/>
+  <circle cx="1800" cy="170" r="120" fill="#315088" opacity=".08"/>
+
+  <text x="64" y="52" class="eyebrow">AZURLSHORTENER  /  LEGACY CLOUD ARCHITECTURE</text>
+  <text x="64" y="104" class="title">The Static Web Apps + Functions approach</text>
+  <text x="64" y="137" class="subtitle">A Blazor WebAssembly admin, SWA-linked API, and redirects all shared one Azure Functions app.</text>
+
+  <g transform="translate(1473 40)">
+    <rect width="383" height="43" rx="21" fill="#34252a" stroke="#9d505e"/>
+    <circle cx="22" cy="21.5" r="5" fill="#f28b82"/>
+    <text x="39" y="26" class="tag" fill="#ffc0ba">LEGACY DESIGN · PRE-MIGRATION</text>
+  </g>
+
+  <!-- Entry points and external dependencies -->
+  <g filter="url(#shadow)">
+    <rect x="64" y="168" width="480" height="126" rx="16" fill="url(#hero)" stroke="#29445e"/>
+    <rect x="566" y="168" width="335" height="126" rx="16" fill="url(#hero)" stroke="#29445e"/>
+    <rect x="923" y="168" width="933" height="126" rx="16" fill="url(#hero)" stroke="#29445e"/>
+  </g>
+  <text x="86" y="194" class="section">USERS &amp; ROUTES</text>
+  <circle cx="101" cy="238" r="17" fill="#143852" stroke="#44d6df"/>
+  <path d="M94 243c1-7 13-7 14 0m-7-12a4 4 0 1 0 0-8 4 4 0 0 0 0 8" fill="none" stroke="#7ce9ed" stroke-width="2"/>
+  <text x="130" y="235" class="card-title">Admin users</text>
+  <text x="130" y="257" class="card-sub">Browser loads the Blazor WebAssembly app</text>
+  <circle cx="101" cy="276" r="11" fill="#143852" stroke="#44d6df"/>
+  <path d="M96 278h10m-8-4l-3 4 3 4m6-8l3 4-3 4" fill="none" stroke="#7ce9ed" stroke-width="1.5"/>
+  <text x="130" y="280" class="small">Short-link visitors · direct redirect endpoint</text>
+
+  <text x="588" y="194" class="section">SOURCE &amp; DEPLOY</text>
+  <circle cx="612" cy="239" r="18" fill="#202d43" stroke="#a9bdcf"/>
+  <path d="M612 226v25m-9-16c5 0 6-4 9-7s4-2 8-2m-17 15c5 0 6 4 9 7s4 2 8 2" fill="none" stroke="#d6e1ec" stroke-width="1.7"/>
+  <text x="641" y="235" class="card-title">GitHub Actions</text>
+  <text x="641" y="256" class="card-sub">Frontend SWA deploy + Functions publish</text>
+  <text x="588" y="280" class="tiny">Separate jobs · static-app token / publish profile</text>
+
+  <text x="945" y="194" class="section">CONNECTED PROVIDERS · APP CONFIGURATION / SECRETS</text>
+  <rect x="945" y="211" width="430" height="63" rx="10" fill="#142b40" stroke="#345570"/>
+  <image id="legacy-openai-icon" x="956" y="226" width="32" height="32" preserveAspectRatio="xMidYMid meet" href="data:image/svg+xml;base64,PHN2ZyBpZD0idXVpZC1hZGJkYWU4ZS01YTQxLTQ2ZDEtOGMxOC1hYTczY2RiZmVlMzIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMTggMTgiPjxkZWZzPjxyYWRpYWxHcmFkaWVudCBpZD0idXVpZC0yYTc0MDdhYS1iNzg3LTQ4ZGQtYTk2YS0wZDgxYWI2ZTkzYmIiIGN4PSItNjcuOTgxIiBjeT0iNzkzLjE5OSIgcj0iLjQ1IiBncmFkaWVudFRyYW5zZm9ybT0idHJhbnNsYXRlKC0xNzkzOS4wMyAyMDM2OC4wMjkpIHJvdGF0ZSg0NSkgc2NhbGUoMjUuMDkxIC0zNC4xNDkpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjODNiOWY5IiAvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAwNzhkNCIgLz48L3JhZGlhbEdyYWRpZW50PjwvZGVmcz48cGF0aCBkPSJtMCwyLjd2MTIuNmMwLDEuNDkxLDEuMjA5LDIuNywyLjcsMi43aDEyLjZjMS40OTEsMCwyLjctMS4yMDksMi43LTIuN1YyLjdjMC0xLjQ5MS0xLjIwOS0yLjctMi43LTIuN0gyLjdDMS4yMDksMCwwLDEuMjA5LDAsMi43Wk0xMC44LDB2My42YzAsMy45NzYsMy4yMjQsNy4yLDcuMiw3LjJoLTMuNmMtMy45NzYsMC03LjE5OSwzLjIyMi03LjIsNy4xOTh2LTMuNTk4YzAtMy45NzYtMy4yMjQtNy4yLTcuMi03LjJoMy42YzMuOTc2LDAsNy4yLTMuMjI0LDcuMi03LjJaIiBmaWxsPSJ1cmwoI3V1aWQtMmE3NDA3YWEtYjc4Ny00OGRkLWE5NmEtMGQ4MWFiNmU5M2JiKSIgc3Ryb2tlLXdpZHRoPSIwIiAvPjwvc3ZnPg=="/>
+  <text x="995" y="239" class="card-title" font-size="15">Azure OpenAI</text>
+  <text x="995" y="258" class="tiny">Optional description-generation integration</text>
+  <rect x="1387" y="211" width="444" height="63" rx="10" fill="#142b40" stroke="#345570"/>
+  <circle cx="1412" cy="242" r="11" fill="#3c3223"/>
+  <path d="M1406 239h12m-10-4l-3 4 3 4m8-8l3 4-3 4" fill="none" stroke="#f6bd60" stroke-width="1.5"/>
+  <text x="1433" y="239" class="card-title" font-size="15">Social &amp; email providers</text>
+  <text x="1433" y="258" class="tiny">Scheduled posting from Functions timer</text>
+
+  <!-- Legacy Azure boundary -->
+  <rect x="48" y="324" width="1824" height="611" rx="23" fill="url(#azure)" stroke="#28617a" stroke-width="2"/>
+  <rect x="72" y="309" width="701" height="35" rx="17" fill="#0d2031"/>
+  <text x="88" y="332" class="section" fill="#71d9df">AZURE · LEGACY RESOURCE GROUP · REGION PER DEPLOYMENT</text>
+  <text x="1613" y="332" class="tiny">ARM template + application CI/CD</text>
+
+  <!-- Flows behind resource blocks -->
+  <path d="M276 294V390H300V430" fill="none" stroke="#44d6df" stroke-width="2.5" marker-end="url(#arrow-cyan)"/>
+  <path d="M342 294V369H1050V430" fill="none" stroke="#44d6df" stroke-width="2.5" marker-end="url(#arrow-cyan)"/>
+  <path d="M710 294V354H493V430" fill="none" stroke="#60a5fa" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrow-blue)"/>
+  <path d="M739 294V343H1050V430" fill="none" stroke="#60a5fa" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrow-blue)"/>
+  <path d="M810 535H847" fill="none" stroke="#60a5fa" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M1396 600H1430" fill="none" stroke="#44d6df" stroke-width="2.1" marker-end="url(#arrow-cyan)"/>
+  <path d="M1396 720H1430" fill="none" stroke="#c4a2ff" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow-purple)"/>
+  <path d="M1396 800H1410V835H1430" fill="none" stroke="#60a5fa" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <path d="M1315 458V294" fill="none" stroke="#f6bd60" stroke-width="1.8" marker-end="url(#arrow-amber)"/>
+  <path d="M1396 626H1414V242H1387" fill="none" stroke="#f6bd60" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#arrow-amber)"/>
+  <text x="560" y="360" class="line-label" fill="#91c8ff">Frontend build / SWA deploy</text>
+  <text x="755" y="344" class="line-label" fill="#91c8ff">Functions package deploy</text>
+  <text x="559" y="420" class="line-label" fill="#91c8ff">/api/* linked-backend route</text>
+  <!-- SWA and Function App -->
+  <g filter="url(#shadow)">
+    <rect x="92" y="430" width="718" height="226" rx="16" class="new"/>
+    <rect x="847" y="430" width="549" height="390" rx="16" class="new"/>
+  </g>
+  <rect x="92" y="430" width="5" height="226" rx="2" fill="#60a5fa"/>
+  <text x="115" y="462" class="eyebrow" fill="#8fc1ff">WEB FRONTEND · STANDARD TIER</text>
+  <image id="static-web-apps-icon" x="115" y="481" width="54" height="54" preserveAspectRatio="xMidYMid meet" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDE4IDE4Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImU2YWQ0ZGY5LTBhYjctNGI0OS05NzA2LTYyMGI0MjM4MGYwYiIgeDE9IjkiIHkxPSIxNi4yMzYiIHgyPSI5IiB5Mj0iNS41OTkiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMwMDViYTEiIC8+PHN0b3Agb2Zmc2V0PSIwLjc3NSIgc3RvcC1jb2xvcj0iIzAwNzhkNCIgLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48ZyBpZD0iZTc4ODViOWMtOTcxNC00Mjc2LWJkNDEtNTkxY2I3ZTA4NmE1Ij48cGF0aCBkPSJNMCw1LjZIMThhMCwwLDAsMCwxLDAsMFYxNS42MzVhLjYuNiwwLDAsMS0uNi42SC42YS42LjYsMCwwLDEtLjYtLjZWNS42QTAsMCwwLDAsMSwwLDUuNloiIGZpbGw9InVybCgjZTZhZDRkZjktMGFiNy00YjQ5LTk3MDYtNjIwYjQyMzgwZjBiKSIgLz48cmVjdCB4PSIxLjMwOSIgeT0iNi42NTciIHdpZHRoPSIxNS41MjciIGhlaWdodD0iOC41MTQiIHJ4PSIwLjYiIGZpbGw9IiM1ZWEwZWYiIG9wYWNpdHk9IjAuNiIgLz48cGF0aCBkPSJNLjYsMS43NjRIMTcuNGEuNi42LDAsMCwxLC42LjZWNS42YTAsMCwwLDAsMSwwLDBIMGEwLDAsMCwwLDEsMCwwVjIuMzY1QS42LjYsMCwwLDEsLjYsMS43NjRaIiBmaWxsPSIjMDA1YmExIiAvPjxwYXRoIGQ9Ik03LjEwOSwxMy4yMTdsLS4zMjEuMzJhLjE0NC4xNDQsMCwwLDEtLjIwNSwwTDQuMjU4LDExLjIwNWEuMjkuMjksMCwwLDEsMC0uNDFsLjMyMS0uMzJMNy4xMSwxMy4wMTJBLjE0NS4xNDUsMCwwLDEsNy4xMDksMTMuMjE3Wm0zLjY1MywwLC4zMjEuMzJhLjE0NC4xNDQsMCwwLDAsLjIwNSwwbDIuMzI1LTIuMzMyYS4yOS4yOSwwLDAsMCwwLS40MWwtLjMyMi0uMzItMi41MywyLjUzN0EuMTQ1LjE0NSwwLDAsMCwxMC43NjIsMTMuMjE3WiIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iMC44IiAvPjxwYXRoIGQ9Ik02LjgzMSw4LjQzM2wuMzIuMzIxYS4xNDQuMTQ0LDAsMCwxLDAsLjIwNUw0LjU3NiwxMS41MjdsLS4zMi0uMzIyYS4yODkuMjg5LDAsMCwxLDAtLjQxbDIuMzctMi4zNjNBLjE0NS4xNDUsMCwwLDEsNi44MzEsOC40MzNabTQuMjA3LDAtLjMyLjMyMWEuMTQ0LjE0NCwwLDAsMCwwLC4yMDVsMi41NzUsMi41NjguMzItLjMyMWEuMjkyLjI5MiwwLDAsMCwwLS40MTFsLTIuMzctMi4zNjJBLjE0NC4xNDQsMCwwLDAsMTEuMDM4LDguNDM0WiIgZmlsbD0iI2ZmZiIgLz48cGF0aCBkPSJNOC4xNTksMTQuMzYzLDcuNjQ2LDE0LjJhLjEwNS4xMDUsMCwwLDEtLjA2Ny0uMTMxTDkuNjY5LDcuNTRhLjEuMSwwLDAsMSwuMTMtLjA2N2wuNTEzLjE2NGEuMS4xLDAsMCwxLC4wNjcuMTNMOC4yODksMTQuM0EuMS4xLDAsMCwxLDguMTU5LDE0LjM2M1oiIGZpbGw9IiNmZmYiIC8+PHBhdGggZD0iTTMuMTY2LDMuODQ3YS43Ni43NiwwLDEsMS0uNzYtLjc2QS43Ni43NiwwLDAsMSwzLjE2NiwzLjg0N1pNNC44LDMuMDg3YS43Ni43NiwwLDEsMCwuNzYuNzZBLjc2Ljc2LDAsMCwwLDQuOCwzLjA4N1ptMi4zOTMsMGEuNzYuNzYsMCwxLDAsLjc2Ljc2QS43Ni43NiwwLDAsMCw3LjE5MSwzLjA4N1oiIGZpbGw9IiNmZmYiIC8+PC9nPjwvc3ZnPg=="/>
+  <text x="181" y="500" class="card-title">Azure Static Web Apps</text>
+  <text x="181" y="522" class="card-sub">Blazor WebAssembly · MudBlazor · static hosting + CDN</text>
+  <rect x="115" y="548" width="192" height="25" rx="12" fill="#1b3150"/>
+  <text x="129" y="565" class="tag" fill="#a8ccff">BUILT-IN SWA AUTH</text>
+  <text x="115" y="601" class="detail">Admin browser calls relative `/api/*` endpoints</text>
+  <text x="115" y="627" class="small">Standard SKU enables linked Functions backend</text>
+  <rect x="585" y="478" width="197" height="132" rx="12" fill="#0d2031" stroke="#36536d"/>
+  <text x="603" y="505" class="eyebrow">LINKED BACKEND</text>
+  <text x="603" y="535" class="card-title" font-size="16">backend1</text>
+  <text x="603" y="558" class="card-sub">SWA `/api/*` → Functions</text>
+  <text x="603" y="584" class="small">Same region · integrated route</text>
+  <text x="603" y="603" class="tiny">No separate API gateway shown</text>
+
+  <rect x="847" y="430" width="5" height="390" rx="2" fill="#44d6df"/>
+  <text x="872" y="462" class="eyebrow" fill="#74e3e8">COMPUTE · AZURE FUNCTIONS CONSUMPTION</text>
+  <image id="function-app-icon" x="872" y="478" width="48" height="48" preserveAspectRatio="xMidYMid meet" href="data:image/svg+xml;base64,PHN2ZyBpZD0iYTJjODgzMDYtZmEwMy00ZTViLWIxOTItNDAxZjBiNzc4MDhiIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDE4IDE4Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImI0MDNhY2E3LWYzODctNDQzNC05NmI0LWFlMTU3ZWRjODM1ZiIgeDE9Ii0xNzUuOTkzIiB5MT0iLTM0My43MjMiIHgyPSItMTc1Ljk5MyIgeTI9Ii0zNTkuMjMyIiBncmFkaWVudFRyYW5zZm9ybT0idHJhbnNsYXRlKDIxMi41NzMgMzcwLjU0OCkgc2NhbGUoMS4xNTYgMS4wMjkpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZmVhMTFiIiAvPjxzdG9wIG9mZnNldD0iMC4yODQiIHN0b3AtY29sb3I9IiNmZWE1MWEiIC8+PHN0b3Agb2Zmc2V0PSIwLjU0NyIgc3RvcC1jb2xvcj0iI2ZlYjAxOCIgLz48c3RvcCBvZmZzZXQ9IjAuOCIgc3RvcC1jb2xvcj0iI2ZmYzMxNCIgLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmZmQ3MGYiIC8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHRpdGxlPkljb24tY29tcHV0ZS0yOTwvdGl0bGU+PGc+PHBhdGggZD0iTTIuMzcsNy40NzVIMy4yYS4yNjcuMjY3LDAsMCwxLC4yNjcuMjY3djYuMTQ4YS41MzMuNTMzLDAsMCwxLS41MzMuNTMzSDIuMWEwLDAsMCwwLDEsMCwwVjcuNzQxYS4yNjcuMjY3LDAsMCwxLC4yNjctLjI2N1oiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEyLjUwNyAxNi43MDUpIHJvdGF0ZSgxMzQuOTE5KSIgZmlsbD0iIzUwZTZmZiIgLz48cGF0aCBkPSJNMi4zMjUsMy42aC44MzNhLjI2Ny4yNjcsMCwwLDEsLjI2Ny4yNjd2Ni41ODNhMCwwLDAsMCwxLDAsMEgyLjU5MWEuNTMzLjUzMywwLDAsMS0uNTMzLS41MzNWMy44NjVBLjI2Ny4yNjcsMCwwLDEsMi4zMjUsMy42WiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNS43NTkgMC4xMTQpIHJvdGF0ZSg0NC45MTkpIiBmaWxsPSIjMTQ5MGRmIiAvPjwvZz48Zz48cGF0aCBkPSJNMTQuNTMsNy40NzVoLjgzM2EuNTMzLjUzMywwLDAsMSwuNTMzLjUzM3Y2LjE0OGEuMjY3LjI2NywwLDAsMS0uMjY3LjI2N0gxNC44YS4yNjcuMjY3LDAsMCwxLS4yNjctLjI2N1Y3LjQ3NWEwLDAsMCwwLDEsMCwwWiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTIuMjIzIC03LjU1NSkgcm90YXRlKDQ1LjA4MSkiIGZpbGw9IiM1MGU2ZmYiIC8+PHBhdGggZD0iTTE1LjEwOCwzLjZoLjgzM2EwLDAsMCwwLDEsMCwwdjYuNTgzYS4yNjcuMjY3LDAsMCwxLS4yNjcuMjY3aC0uODMzYS4yNjcuMjY3LDAsMCwxLS4yNjctLjI2N1Y0LjEzMWEuNTMzLjUzMywwLDAsMSwuNTMzLS41MzNaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzMS4wMjIgMS4yMjIpIHJvdGF0ZSgxMzUuMDgxKSIgZmlsbD0iIzE0OTBkZiIgLz48L2c+PHBhdGggZD0iTTguNDU5LDkuOUg0Ljg3YS4xOTMuMTkzLDAsMCwxLS4yLS4xODEuMTY2LjE2NiwwLDAsMSwuMDE4LS4wNzVMOC45OTEsMS4xM2EuMjA2LjIwNiwwLDAsMSwuMTg2LS4xMDZoNC4yNDVhLjE5My4xOTMsMCwwLDEsLjIuMTgxLjE2NS4xNjUsMCwwLDEtLjAzNS4xTDguNTM0LDcuOTY2aDQuOTI4YS4xOTMuMTkzLDAsMCwxLC4yLjE4MS4xNzYuMTc2LDAsMCwxLS4wNTIuMTIyTDUuNDIxLDE2Ljc4OGMtLjA3Ny4wNDYtLjYyNC41LS4zNTYtLjE4OWgwWiIgZmlsbD0idXJsKCNiNDAzYWNhNy1mMzg3LTQ0MzQtOTZiNC1hZTE1N2VkYzgzNWYpIiAvPjwvc3ZnPg=="/>
+  <text x="930" y="500" class="card-title">Azure Function App</text>
+  <text x="930" y="522" class="card-sub">.NET isolated · Functions v4 · Y1 Dynamic plan</text>
+  <rect x="872" y="544" width="498" height="1" fill="#29445e"/>
+  <text x="872" y="571" class="section">ONE SHARED APP · MULTIPLE TRIGGERS</text>
+  <rect x="872" y="590" width="147" height="62" rx="10" fill="#123d45" stroke="#317c96"/>
+  <text x="890" y="616" class="tag" fill="#7ce9ed">HTTP · PUBLIC</text>
+  <text x="890" y="638" class="small">UrlRedirect</text>
+  <rect x="1031" y="590" width="161" height="62" rx="10" fill="#1b3150" stroke="#365b80"/>
+  <text x="1049" y="616" class="tag" fill="#a8ccff">HTTP · /API</text>
+  <text x="1049" y="638" class="small">CRUD · stats · posts</text>
+  <rect x="1204" y="590" width="166" height="62" rx="10" fill="#3c3223" stroke="#8c7141"/>
+  <text x="1222" y="616" class="tag" fill="#f6d392">TIMER · CRON</text>
+  <text x="1222" y="638" class="small">Scheduled posting</text>
+  <text x="872" y="684" class="detail">Redirects · link management · click analytics · scheduler</text>
+  <text x="872" y="708" class="detail">Shared app settings, deployment, scale &amp; failure boundary</text>
+  <text x="872" y="741" class="small">Direct public redirect + SWA-linked `/api/*` backend</text>
+  <text x="872" y="770" class="small">Anonymous HTTP triggers rely on SWA front-door auth for admin</text>
+  <text x="872" y="798" class="tiny">Classic Functions host and all functions deployed as one package</text>
+
+  <!-- Shared storage, monitoring and hosting plan -->
+  <text x="1431" y="393" class="section">SUPPORTING RESOURCES</text>
+  <g filter="url(#shadow)">
+    <rect x="1430" y="430" width="411" height="192" rx="14" class="existing"/>
+    <rect x="1430" y="646" width="411" height="121" rx="14" class="new"/>
+    <rect x="1430" y="789" width="411" height="94" rx="14" class="new"/>
+  </g>
+  <image id="legacy-storage-icon" x="1450" y="450" width="42" height="42" preserveAspectRatio="xMidYMid meet" href="data:image/svg+xml;base64,PHN2ZyBpZD0iZjJmMDQzNDktOGFlZS00NDEzLTg0YzktYTkwNTM2MTFiMzE5IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDE4IDE4Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImFkNGM0Zjk2LTA5YWEtNGY5MS1iYTEwLTVjYjhhZDUzMGY3NCIgeDE9IjkiIHkxPSIxNS44MyIgeDI9IjkiIHkyPSI1Ljc5IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjYjNiM2IzIiAvPjxzdG9wIG9mZnNldD0iMC4yNiIgc3RvcC1jb2xvcj0iI2MxYzFjMSIgLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlNmU2ZTYiIC8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHRpdGxlPkljb24tc3RvcmFnZS04NjwvdGl0bGU+PHBhdGggZD0iTS41LDUuNzloMTdhMCwwLDAsMCwxLDAsMHY5LjQ4YS41Ny41NywwLDAsMS0uNTcuNTdIMS4wN2EuNTcuNTcsMCwwLDEtLjU3LS41N1Y1Ljc5QTAsMCwwLDAsMSwuNSw1Ljc5WiIgZmlsbD0idXJsKCNhZDRjNGY5Ni0wOWFhLTRmOTEtYmExMC01Y2I4YWQ1MzBmNzQpIiAvPjxwYXRoIGQ9Ik0xLjA3LDIuMTdIMTYuOTNhLjU3LjU3LDAsMCwxLC41Ny41N1Y1Ljc5YTAsMCwwLDAsMSwwLDBILjVhMCwwLDAsMCwxLDAsMFYyLjczQS41Ny41NywwLDAsMSwxLjA3LDIuMTdaIiBmaWxsPSIjMzdjMmIxIiAvPjxwYXRoIGQ9Ik0yLjgxLDYuODlIMTUuMThhLjI3LjI3LDAsMCwxLC4yNi4yN3YxLjRhLjI3LjI3LDAsMCwxLS4yNi4yN0gyLjgxYS4yNy4yNywwLDAsMS0uMjYtLjI3VjcuMTZBLjI3LjI3LDAsMCwxLDIuODEsNi44OVoiIGZpbGw9IiNmZmYiIC8+PHBhdGggZD0iTTIuODIsOS42OEgxNS4xOWEuMjcuMjcsMCwwLDEsLjI2LjI3djEuNDFhLjI3LjI3LDAsMCwxLS4yNi4yN0gyLjgyYS4yNy4yNywwLDAsMS0uMjYtLjI3VjEwQS4yNy4yNywwLDAsMSwyLjgyLDkuNjhaIiBmaWxsPSIjMzdjMmIxIiAvPjxwYXRoIGQ9Ik0yLjgyLDEyLjVIMTUuMTlhLjI3LjI3LDAsMCwxLC4yNi4yN3YxLjQxYS4yNy4yNywwLDAsMS0uMjYuMjdIMi44MmEuMjcuMjcsMCwwLDEtLjI2LS4yN1YxMi43N0EuMjcuMjcsMCwwLDEsMi44MiwxMi41WiIgZmlsbD0iIzI1ODI3NyIgLz48L3N2Zz4="/>
+  <text x="1504" y="463" class="card-title">Azure Storage account</text>
+  <rect x="1705" y="446" width="115" height="22" rx="11" fill="#303b49"/>
+  <text x="1720" y="461" class="tag" fill="#c0cad5">SHARED</text>
+  <text x="1450" y="505" class="card-sub">Standard LRS · account key / connection string</text>
+  <text x="1450" y="536" class="detail">UrlsDetails + ClickStats tables</text>
+  <text x="1450" y="560" class="detail">Functions host state / AzureWebJobsStorage</text>
+  <text x="1450" y="591" class="small">App data and runtime state use one account</text>
+  <text x="1450" y="610" class="tiny">ARM template generated this account; data retained across app changes</text>
+
+  <image id="legacy-insights-icon" x="1450" y="664" width="34" height="34" preserveAspectRatio="xMidYMid meet" href="data:image/svg+xml;base64,PHN2ZyBpZD0iYjZmNmQ5OWUtZjMzMC00ODFkLTgzNmYtZWE1OGNjNDIyMTdmIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgdmlld0JveD0iMCAwIDE4IDE4Ij48ZGVmcz48cmFkaWFsR3JhZGllbnQgaWQ9ImE3YTFjNDMxLTZjNmQtNGE4Zi05YTY5LThkYTQzN2U1YjBjNSIgY3g9IjkiIGN5PSI3LjM1IiByPSI2LjQyIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjYjc3YWY0IiAvPjxzdG9wIG9mZnNldD0iMC4yMSIgc3RvcC1jb2xvcj0iI2IzNzhmMiIgLz48c3RvcCBvZmZzZXQ9IjAuNDMiIHN0b3AtY29sb3I9IiNhNjcyZWQiIC8+PHN0b3Agb2Zmc2V0PSIwLjY1IiBzdG9wLWNvbG9yPSIjOTI2N2U0IiAvPjxzdG9wIG9mZnNldD0iMC44OCIgc3RvcC1jb2xvcj0iIzc1NTlkOCIgLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiM2MjRmZDAiIC8+PC9yYWRpYWxHcmFkaWVudD48bGluZWFyR3JhZGllbnQgaWQ9ImVjMGM0ZjBkLTVjOGUtNDg4Mi05NmExLTg5ZDYxODA4ZWI0OSIgeDE9IjkuMDIiIHkxPSIzLjkxIiB4Mj0iOS4wOCIgeTI9IjExLjQ5IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjZjJmMmYyIiAvPjxzdG9wIG9mZnNldD0iMC4yMyIgc3RvcC1jb2xvcj0iI2YxZjFmMiIgc3RvcC1vcGFjaXR5PSIwLjk5IiAvPjxzdG9wIG9mZnNldD0iMC4zNyIgc3RvcC1jb2xvcj0iI2VkZWRmMSIgc3RvcC1vcGFjaXR5PSIwLjk1IiAvPjxzdG9wIG9mZnNldD0iMC40OCIgc3RvcC1jb2xvcj0iI2U3ZTVmMCIgc3RvcC1vcGFjaXR5PSIwLjg5IiAvPjxzdG9wIG9mZnNldD0iMC41OCIgc3RvcC1jb2xvcj0iI2RlZGJlZSIgc3RvcC1vcGFjaXR5PSIwLjgxIiAvPjxzdG9wIG9mZnNldD0iMC42NyIgc3RvcC1jb2xvcj0iI2QzY2VlYiIgc3RvcC1vcGFjaXR5PSIwLjciIC8+PHN0b3Agb2Zmc2V0PSIwLjc2IiBzdG9wLWNvbG9yPSIjYzRiZWU4IiBzdG9wLW9wYWNpdHk9IjAuNTciIC8+PHN0b3Agb2Zmc2V0PSIwLjg0IiBzdG9wLWNvbG9yPSIjYjRhYmU1IiBzdG9wLW9wYWNpdHk9IjAuNDEiIC8+PHN0b3Agb2Zmc2V0PSIwLjkyIiBzdG9wLWNvbG9yPSIjYTA5NWUxIiBzdG9wLW9wYWNpdHk9IjAuMjIiIC8+PHN0b3Agb2Zmc2V0PSIwLjk5IiBzdG9wLWNvbG9yPSIjOGI3ZGRjIiBzdG9wLW9wYWNpdHk9IjAuMDIiIC8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjODk3YmRjIiBzdG9wLW9wYWNpdHk9IjAiIC8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHRpdGxlPkljb24tbWFuYWdlLTMxMDwvdGl0bGU+PHBhdGggZD0iTTEwLjIzLDE3LjM5bC44MS0uODdWMTQuMkg3djIuMzJsLjgxLjg3QS4zMi4zMiwwLDAsMCw4LDE3LjVoMkEuMzIuMzIsMCwwLDAsMTAuMjMsMTcuMzlaIiBmaWxsPSIjY2VjZWNlIiAvPjxwYXRoIGQ9Ik05LC41QTUuODksNS44OSwwLDAsMCwzLjA5LDcuMDdjLjI3LDIuNDcsMi42MiwzLjYyLDMuMjksNi43NWEuNDkuNDksMCwwLDAsLjQ3LjM4aDQuM2EuNDkuNDksMCwwLDAsLjQ3LS4zOGMuNjctMy4xMywzLTQuMjgsMy4yOS02Ljc1QTUuODksNS44OSwwLDAsMCw5LC41Wk03LDE0LjIiIGZpbGw9InVybCgjYTdhMWM0MzEtNmM2ZC00YThmLTlhNjktOGRhNDM3ZTViMGM1KSIgLz48cGF0aCBkPSJNMTEuNDYsMy43OWExLjQsMS40LDAsMCwwLTEuMzUsMS40NFY2SDhWNS4yM0ExLjQxLDEuNDEsMCwwLDAsNi41OSwzLjc5LDEuNCwxLjQsMCwwLDAsNS4yNCw1LjIzLDEuNDEsMS40MSwwLDAsMCw2LjU5LDYuNjhoLjY0djZhLjM2LjM2LDAsMCwwLC43Miwwdi02aDIuMTZ2NmEuMzYuMzYsMCwxLDAsLjcyLDB2LTZoLjYzYTEuNCwxLjQsMCwwLDAsMS4zNS0xLjQ1QTEuNCwxLjQsMCwwLDAsMTEuNDYsMy43OVpNNy4yMyw2SDYuNTVhLjc0Ljc0LDAsMCwxLS42OC0uNzcuNzQuNzQsMCwwLDEsLjY4LS43Ny43NC43NCwwLDAsMSwuNjguNzdabTQuMjgsMGgtLjY4VjUuMTlhLjY4LjY4LDAsMSwxLDEuMzUsMEEuNzMuNzMsMCwwLDEsMTEuNTEsNloiIGZpbGw9InVybCgjZWMwYzRmMGQtNWM4ZS00ODgyLTk2YTEtODlkNjE4MDhlYjQ5KSIgLz48cG9seWdvbiBwb2ludHM9IjYuOTYgMTUuOCAxMS4wNCAxNS4wMSAxMS4wNCAxNC41NiA2Ljk2IDE1LjM2IDYuOTYgMTUuOCIgZmlsbD0iIzk5OSIgLz48cG9seWdvbiBwb2ludHM9IjExLjA0IDE2LjExIDExLjA0IDE1LjY3IDYuOTYgMTYuNDggNi45NiAxNi41MiA3LjI3IDE2Ljg2IDExLjA0IDE2LjExIiBmaWxsPSIjOTk5IiAvPjwvc3ZnPg=="/>
+  <text x="1496" y="681" class="card-title">Application Insights</text>
+  <text x="1450" y="719" class="card-sub">Classic component · Functions instrumentation</text>
+  <text x="1450" y="747" class="small">No workspace-based Log Analytics pair in legacy ARM</text>
+
+  <rect x="1450" y="808" width="39" height="39" rx="10" fill="#183954" stroke="#365b80"/>
+  <path d="M1459 835h21m-17-4v-8m6 8v-14m6 14v-5" stroke="#91c8ff" stroke-width="2" stroke-linecap="round"/>
+  <text x="1504" y="823" class="card-title">App Service plan · Y1</text>
+  <text x="1504" y="847" class="card-sub">Dynamic / Consumption hosting for Functions</text>
+  <text x="1504" y="868" class="tiny">Shared plan under the single Function App</text>
+
+  <!-- Footer -->
+  <line x1="65" y1="967" x2="1855" y2="967" stroke="#24394e"/>
+  <text x="68" y="1002" class="section">READING THE DIAGRAM</text>
+  <path d="M270 997h50" stroke="#44d6df" stroke-width="2.3" marker-end="url(#arrow-cyan)"/>
+  <text x="331" y="1002" class="small">HTTP / request flow</text>
+  <path d="M490 997h50" stroke="#60a5fa" stroke-width="2" stroke-dasharray="5 5" marker-end="url(#arrow-blue)"/>
+  <text x="551" y="1002" class="small">build / deploy</text>
+  <path d="M681 997h50" stroke="#c4a2ff" stroke-width="2" stroke-dasharray="5 5" marker-end="url(#arrow-purple)"/>
+  <text x="742" y="1002" class="small">telemetry</text>
+  <text x="68" y="1041" class="tiny">Historical design based on the legacy ARM template and Static Web Apps / Functions workflows. Resource names and live/decommissioned state are intentionally not asserted.</text>
+  <text x="1850" y="1041" text-anchor="end" class="tiny">LEGACY REFERENCE · NOT THE CURRENT DEPLOYMENT MODEL</text>
+</svg>

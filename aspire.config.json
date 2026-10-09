@@ -1,5 +1,5 @@
 {
   "appHost": {
-    "path": "src/shortenerTools.AppHost/shortenerTools.AppHost.csproj"
+    "path": "src/ShortenerTools.AppHost/ShortenerTools.AppHost.csproj"
   }
 }

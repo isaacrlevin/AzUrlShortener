@@ -27,7 +27,7 @@
 		<PackageReference Include="CarpaNet" />
 	</ItemGroup>
 	<ItemGroup>
-	  <ProjectReference Include="..\Cloud5mins.ShortenerTools.Core\Cloud5mins.ShortenerTools.Core.csproj" />
+	  <ProjectReference Include="..\ShortenerTools.Core\ShortenerTools.Core.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Update="host.json">

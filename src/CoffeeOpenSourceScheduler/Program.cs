@@ -1,6 +1,6 @@
-using Cloud5mins.ShortenerTools.Core.Domain;
-using Cloud5mins.ShortenerTools.Core.Domain.Socials.LinkedIn.Models;
-using Cloud5mins.ShortenerTools.Core.Domain.Socials.Threads;
+using ShortenerTools.Core.Domain;
+using ShortenerTools.Core.Domain.Socials.LinkedIn.Models;
+using ShortenerTools.Core.Domain.Socials.Threads;
 using LinkedIn;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;

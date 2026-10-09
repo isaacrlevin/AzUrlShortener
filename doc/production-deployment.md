@@ -1,0 +1,343 @@
+# Production deployment setup
+
+The ACA workflow uses the existing Aspire AppHost and renamed server-side
+`ShortenerTools.Admin`. This setup does not deploy, change DNS, copy tables, or
+enable scheduled posts. Azure identity/federation and GitHub environment inputs
+are configured separately by the operator.
+
+## Safe local configuration import
+
+If the existing data account moves resource groups, update
+`ProductionDeployment:ExistingStorageResourceGroup` in AppHost user secrets and
+the GitHub `EXISTING_STORAGE_RESOURCE_GROUP` variable. The production data account
+`shortenertooltfkc6sa` is now in `rg-shortener-production`, not
+`LevinUrlShortener`. Deploy mode verifies the account is accessible in the
+configured subscription/group before invoking Aspire; publish remains offline.
+
+Use PowerShell 7, .NET 10, and Aspire CLI 13.6.1. Azure CLI and Docker with Linux
+containers are needed for actual deployment; Azure CLI's local Bicep compiler is
+used by the artifact checker. From the repository root:
+
+```powershell
+# Default: validate required inputs only, without invoking Aspire or Azure.
+.\src\tools\Invoke-ProductionDeployment.ps1 `
+    -LocalSettingsPath .\src\ShortenerTools.Functions\local.settings.json -LoadUserSecrets
+
+# Nonprovisioning artifact generation with the same validated inputs.
+.\src\tools\Invoke-ProductionDeployment.ps1 -Mode Publish `
+    -LocalSettingsPath .\src\ShortenerTools.Functions\local.settings.json -LoadUserSecrets
+.\src\tools\Test-AcaArtifacts.ps1 -ArtifactPath .\aspire-output
+
+# Explicit provisioning/update; run only when intentionally deploying.
+.\src\tools\Invoke-ProductionDeployment.ps1 -Mode Deploy `
+    -LocalSettingsPath .\src\ShortenerTools.Functions\local.settings.json -LoadUserSecrets
+```
+
+`local.settings.json` is ignored by Git. The helper accepts a different
+`-LocalSettingsPath` (including an old Functions checkout) and reads only its
+unencrypted `Values` object. `-LoadUserSecrets` explicitly reads the AppHost's
+local user-secret store using its `UserSecretsId`; it does not invoke or print
+`dotnet user-secrets list`. Without that switch the secret store is not opened.
+The helper creates no exported secret file, logs no values, and restores imported
+environment variables in `finally`, including on failure. Aspire may maintain
+private local deployment state; keep that state and published output out of Git
+and artifact uploads. Aspire stdout/stderr
+is suppressed because tool exception messages may contain credentials. Failure
+reports the operation and exit code, not tool payloads. Do not enable shell
+tracing, transcription, verbose configuration dumps, or upload deployment state.
+
+Precedence: exact process environment key, portable underscore process key,
+production-specific user-secret defaults (for domain, fallback and existing
+storage), AppHost `Parameters:*` user-secret key, then Functions `Values`. The helper converts
+`Parameters__twitter_consumer_key` to exact `Parameters__twitter-consumer-key`
+for Aspire. **All inputs below are required except `TwitterViaHandle`** (optional,
+empty, nonsecret), including all existing social/
+email integrations even while the timer is disabled. Missing inputs fail before
+publish/deploy; no deployment-time prompting or silently absent integrations.
+URLs must be HTTPS, without embedded credentials, localhost/loopback addresses,
+or reserved `.invalid` hosts.
+`CustomDomain` is the full short-link base URL, without a trailing slash.
+
+### Deployment-only AppHost user secrets / process environment
+
+| User-secret key | Portable process environment |
+|---|---|
+| `Azure:SubscriptionId` | `Azure__SubscriptionId` |
+| `Azure:Location` | `Azure__Location` |
+| `Azure:ResourceGroup` | `Azure__ResourceGroup` |
+| `Parameters:existing-storage-account` | `Parameters__existing_storage_account` |
+| `Parameters:existing-storage-resource-group` | `Parameters__existing_storage_resource_group` |
+| `Parameters:entra-tenant-id` | `Parameters__entra_tenant_id` |
+| `Parameters:entra-client-id` | `Parameters__entra_client_id` |
+| `Parameters:entra-client-secret` | `Parameters__entra_client_secret` |
+| `Parameters:administrator-object-id` | `Parameters__administrator_object_id` |
+
+With `-LoadUserSecrets`, Azure target settings also fall back to
+`ProductionDeployment:SubscriptionId`, `ProductionDeployment:Location`, and
+`ProductionDeployment:ResourceGroup`. Existing process environment and `Azure:*`
+keys take precedence. `ProductionDeployment:ClientId`, `PrincipalId`, and
+`TenantId` are identity metadata, not imported as application credentials;
+local deployment still needs intentional Azure authentication.
+
+For safe production-specific defaults, these user secrets override the
+corresponding local `Parameters:*` values without changing the local secret store:
+
+| Production user-secret key | AppHost parameter |
+|---|---|
+| `ProductionDeployment:CustomDomain` | `custom-domain` |
+| `ProductionDeployment:DefaultRedirectUrl` | `default-redirect-url` |
+| `ProductionDeployment:ExistingStorageAccount` | `existing-storage-account` |
+| `ProductionDeployment:ExistingStorageResourceGroup` | `existing-storage-resource-group` |
+
+In particular, a local sign-in callback URL is not a production redirect fallback.
+The coordinating operator configured the production defaults separately; local
+development `Parameters:*` values remain untouched.
+
+Use a local editor/secret manager for user secrets, not commands containing real
+secret literals in shell history. `StagingDeployment:*`, `Storage:UseProduction`,
+and `ConnectionStrings:production-data` are intentionally not imported.
+Production attaches the existing account by name/resource group with managed
+identity rather than copying a local storage connection string.
+
+### Functions `Values` mapping
+
+Each destination also accepts the equivalent AppHost user-secret key
+`Parameters:<parameter>` and environment `Parameters__<parameter_with_underscores>`.
+
+| Functions Values key | AppHost parameter |
+|---|---|
+| `AdminApiKey` | `admin-api-key` |
+| `CustomDomain` | `custom-domain` |
+| `DefaultRedirectUrl` | `default-redirect-url` |
+| `TwitterConsumerKey` | `twitter-consumer-key` |
+| `TwitterConsumerSecret` | `twitter-consumer-secret` |
+| `TwitterAccessToken` | `twitter-access-token` |
+| `TwitterAccessSecret` | `twitter-access-secret` |
+| `TwitterViaHandle` | `twitter-via-handle` |
+| `MastodonAccessToken` | `mastodon-access-token` |
+| `LinkedInAccessToken` | `linkedin-access-token` |
+| `BlueskyUserName` | `bluesky-username` |
+| `BlueskyPassword` | `bluesky-password` |
+| `ThreadsToken` | `threads-token` |
+| `COMMUNICATION_SERVICES_CONNECTION_STRING` | `communication-services-connection-string` |
+| `EmailFrom` | `email-from` |
+| `EmailTo` | `email-to` |
+| `AzureOpenAIDeploymentName` (fallback: `DeploymentName`) | `azure-openai-deployment-name` |
+| `AzureOpenAIEndpoint` + `AzureOpenAIKey` | Builds `ConnectionStrings:chat` using `Endpoint=…;Key=…` |
+
+An existing chat connection takes precedence over endpoint/key construction:
+`ConnectionStrings__chat` environment, then AppHost `ConnectionStrings:chat`
+user secret, then Functions `Values["ConnectionStrings:chat"]`.
+The management API receives only the secret-reference `ConnectionStrings__chat`
+and the explicit `DeploymentName`. Production never relies on the legacy
+`gpt-4o-mini` default. Prompt, page and response content telemetry is disabled in
+all environments; description failures log/return a generic message rather than
+provider exception content. Staging receives no chat/social secrets and retains its
+application-level external-posting and description-generation guards.
+
+## GitHub production environment
+
+### Diagnosing description generation
+
+In the Aspire deployment, AI runs in `management-api`, not `admin`. The effective
+settings are `ConnectionStrings__chat` (secret reference) and `DeploymentName`.
+Adding legacy `AzureOpenAIEndpoint`/`AzureOpenAIKey` variables does not override
+the Aspire chat connection. Check the management API's ready revision and logs
+for failures, and the admin logs for HTTP/resilience timeouts. A direct successful
+`/api/CreateDescription` request combined with an admin
+`TimeoutRejectedException` at ten seconds indicates the HTTP client deadline,
+not invalid Azure OpenAI credentials.
+
+Description generation now uses a dedicated 120-second resilience request budget,
+without automatically retrying POSTs. Other management
+requests retain their normal deadlines. A timed-out generation displays an error
+instead of terminating the Blazor circuit. Redeploy the admin to apply this fix;
+do not enable the scheduler or change DNS for an AI timeout fix.
+
+Create/configure `production` with deployment branch `main`; no required
+reviewers/approval are requested. Store the following inputs (never paste values
+into issues, logs or repository files):
+
+| Kind | Names |
+|---|---|
+| Azure OIDC secrets | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` |
+| Application secrets | `ENTRA_CLIENT_SECRET`, `ADMIN_API_KEY`, `AZURE_OPENAI_CONNECTION_STRING` |
+| Social/email secrets | `TWITTER_CONSUMER_KEY`, `TWITTER_CONSUMER_SECRET`, `TWITTER_ACCESS_TOKEN`, `TWITTER_ACCESS_SECRET`, `MASTODON_ACCESS_TOKEN`, `LINKEDIN_ACCESS_TOKEN`, `BLUESKY_USERNAME`, `BLUESKY_PASSWORD`, `THREADS_TOKEN`, `COMMUNICATION_SERVICES_CONNECTION_STRING`, `EMAIL_FROM`, `EMAIL_TO` |
+| Variables | `AZURE_LOCATION`, `AZURE_RESOURCE_GROUP`, `EXISTING_STORAGE_ACCOUNT`, `EXISTING_STORAGE_RESOURCE_GROUP`, `ENTRA_CLIENT_ID`, `ADMINISTRATOR_OBJECT_ID`, `SHORT_LINK_DOMAIN`, `DEFAULT_REDIRECT_URL`, `TWITTER_VIA_HANDLE`, `AZURE_OPENAI_DEPLOYMENT_NAME` |
+
+`AZURE_CLIENT_ID` is the deployment identity, **not** `ENTRA_CLIENT_ID` (admin
+sign-in). The workflow uses `AZURE_TENANT_ID` for both tenants. Federation subject:
+`repo:isaacrlevin/AzUrlShortener:environment:production`. The identity needs
+resource creation and role-assignment rights, including the existing data account.
+The generated `main.bicep` is subscription-scoped and declares the target resource
+group. The configured deployment principal therefore also has the custom
+`ShortenerTools Deployment Bootstrap` role at subscription scope. This grants only
+`Microsoft.Resources/deployments/*`, subscription reads, and resource-group reads.
+It does not grant subscription-wide resource creation, role assignment, or data
+access. Resource-write and role-assignment rights remain scoped to the dedicated
+production group and existing data account. End-to-end GitHub OIDC deployment
+authorization is verified only when the workflow is actually run.
+
+### Setup status (October 8, 2026)
+
+The coordinating operator reports that `isaacrlevin/AzUrlShortener` now has a
+`production` GitHub environment with no required reviewers and configured
+deployment inputs. OIDC federation uses the environment subject above; the
+deployment principal has Contributor and RBAC Administrator scoped to the new
+`rg-shortener-production` resource group in `westus2` and the existing data
+storage account only. The resource group is empty: no production apps have been
+deployed. Existing storage and local Functions credentials are unchanged.
+Subscription deployment orchestration is covered by the limited bootstrap role
+described above; this setup is not a claim of verified production deployment.
+
+Secrets may be loaded by an operator with `gh secret set NAME --env production --repo isaacrlevin/AzUrlShortener`
+using stdin from a secret manager, rather than `--body`/command-line literals.
+
+The workflow validates builds/tests and Production/Staging Bicep on PR/push to `main`.
+Deploy is manual, serialized, scoped to environment `production`, and allowed
+**only on `main`**. Branch dispatches validate but skip deployment. The current
+feature branch must be integrated into `main` and pushed before production
+dispatch; creating this file locally does not make it available on GitHub.
+
+```powershell
+# Intentional deployment, but ACA timer remains disabled.
+gh workflow run azure-container-apps.yml --repo isaacrlevin/AzUrlShortener --ref main `
+    -f environment=production -f enable_scheduled_posting=false
+```
+
+There is no automatic production deploy on push and no DNS mutation in this
+workflow. The helper clears resolved deployment cache on explicit deploy so a
+previous enabled timer cannot silently survive a later default-disabled run.
+
+## Scheduler cutover (separate intentional operation)
+
+The AppHost parameter `scheduler-disabled` defaults to string `true`; the
+standalone Container App Bicep parameter `scheduler_disabled_value` does too.
+Local runs and Staging always hard-disable the timer regardless of the parameter.
+Public redirects and management API always hard-disable their timer.
+
+Only **after disabling the legacy live Functions timer**, intentionally deploy
+with workflow `enable_scheduled_posting=true` or helper `-Mode Deploy -EnableScheduler`.
+Repeat that opt-in on subsequent deployments if the ACA timer should stay
+enabled; omitting it disables ACA scheduling. Manual administrator posting is
+still live in Production and can send real social/email messages; do not use it
+as a harmless smoke test. See the [migration cutover/rollback checklist](azure-container-apps-migration.md#production-cutover).
+
+## Application Insights telemetry
+
+The AppHost now includes workspace-based Application Insights (`app-insights`)
+in **publish/deploy mode only**. Aspire creates the Insights component and its
+Log Analytics workspace in the deployment resource group. Names are derived from
+that group, so Production and Staging deployed to different resource groups have
+separate telemetry; don't deploy both environments into the same group.
+
+Aspire's resource reference supplies `APPLICATIONINSIGHTS_CONNECTION_STRING`
+to all four Container Apps. No new workflow credentials, GitHub secrets, helper
+inputs, or manually copied Insights connection string are needed. The existing
+deployment principal's resource-group Contributor rights cover creation of
+Insights and its workspace; existing subscription bootstrap/RBAC prerequisites
+are unchanged. Keep publishing artifacts separate from actual deployment.
+
+`ShortenerTools.ServiceDefaults` exports logs, traces and metrics through
+`Azure.Monitor.OpenTelemetry.Exporter`, gated on a nonblank connection string.
+The existing ASP.NET Core, HTTP client and runtime instrumentation is retained;
+there is no second distro/instrumentation pipeline. The Functions host receives
+`AzureFunctionsJobHost__telemetryMode=OpenTelemetry` and exports to that same
+Insights resource. Worker `UseFunctionsWorkerDefaults()` captures invocation
+spans, preserves host/worker correlation and advertises direct worker telemetry
+so the host doesn't forward those logs a second time. The legacy Application
+Insights SDK remains exclusively for non-Aspire Functions runs.
+
+`OTEL_SERVICE_NAME` distinguishes the four roles:
+
+- `admin`
+- `management-api`
+- `shortenertools-functions` (redirect)
+- `shortenertools-scheduled-posts` (timer)
+
+Local `aspire start` retains OTLP export to the Aspire dashboard and does not
+create Insights resources or require an Insights secret. OTLP and Azure Monitor
+are independently gated, so both destinations can be used if explicitly
+configured. This change does not add browser/client-side telemetry.
+
+### Where to see telemetry after deployment
+
+Open the deployment resource group in the Azure portal, select its
+Application Insights component (tag `aspire-resource-name=app-insights`), then
+use **Failures**, **Performance**, **Application map**, or **Logs**. Allow a few
+minutes after exercising the application for ingestion. Timer telemetry requires
+an intentional scheduler cutover; don't enable scheduled posting just to test
+monitoring. Live Metrics streaming is disabled in the worker exporter.
+
+In **Application Insights → Logs**:
+
+```kusto
+requests
+| where timestamp > ago(1h)
+| summarize Requests=count(), Failures=countif(success == false) by cloud_RoleName
+```
+
+```kusto
+union requests, dependencies, traces, exceptions
+| where timestamp > ago(1h)
+| where operation_Id == "<operation ID from a request>"
+| order by timestamp asc
+```
+
+For logs and dependency failures:
+
+```kusto
+union traces, dependencies
+| where timestamp > ago(1h)
+| where cloud_RoleName == "management-api"
+| order by timestamp desc
+```
+
+At the **Log Analytics workspace → Logs** scope, the corresponding table/column
+names are `AppRequests`, `AppDependencies`, `AppTraces`, `AppExceptions`,
+`TimeGenerated`, `AppRoleName`, and `OperationId`. Worker logs honor application
+logging levels; host logs honor Functions host settings. Trace sampling can
+reduce retained operations, so request counts here are not an authoritative
+click ledger (the existing table-based click analytics remains unchanged).
+
+Prompts, scraped content and model responses remain excluded:
+`EnableSensitiveData=false`; AI instrumentation exports metadata only. HTTP
+client header values are all redacted, no header/body enrichment is enabled,
+and redirect logs no longer print destination URLs, referrers or user agents.
+Request paths, dependency targets and existing application log fields can still
+contain operational data: treat access/retention policies accordingly and never
+add credentials or private content to log messages or URLs.
+
+Application Insights/Log Analytics ingestion and retention are additional
+billable usage, outside the ACA compute estimate. Review telemetry volume,
+sampling, retention, budgets and daily caps after deployment; caps may stop
+ingestion. The Azure Monitor exporter retains its default trace sampling rather
+than enabling full-content or unsampled telemetry.
+
+References: [Aspire Application Insights](https://aspire.dev/integrations/cloud/azure/azure-application-insights/),
+[Functions host/worker OpenTelemetry](https://learn.microsoft.com/azure/azure-functions/opentelemetry-howto),
+[Azure Monitor pricing](https://azure.microsoft.com/pricing/details/monitor/).
+
+## Offline verification
+
+```powershell
+.\src\tools\Test-ProductionDeployment.ps1
+dotnet build src\ShortenerTools.sln --configuration Release
+dotnet test src\ShortenerTools.Tests\ShortenerTools.Tests.csproj --configuration Release --no-build
+aspire publish --apphost src\ShortenerTools.AppHost\ShortenerTools.AppHost.csproj `
+    --environment Production --non-interactive -o .\aspire-output
+.\src\tools\Test-AcaArtifacts.ps1 -ArtifactPath .\aspire-output
+aspire publish --apphost src\ShortenerTools.AppHost\ShortenerTools.AppHost.csproj `
+    --environment Staging --non-interactive -o .\aspire-output-staging
+.\src\tools\Test-AcaArtifacts.ps1 -ArtifactPath .\aspire-output-staging -DeploymentEnvironment Staging
+```
+
+The direct publish above deliberately needs no real deployment credentials. The
+helper tests use synthetic fixtures and a mocked Aspire executable; they never
+open the actual user-secret store or call the cloud. The checker asserts the
+parameter-shaped timer, disabled module default, AI deployment/secret wiring,
+ingress, scaling, isolated function allowlists, storage references, a linked
+Application Insights/workspace pair, all four generated connection references,
+distinct telemetry roles, and host/worker OpenTelemetry settings. Application
+tests cover exporter gating, OTLP coexistence, legacy SDK exclusion, worker
+duplicate-log prevention capability, and header redaction without sending data.

@@ -12,7 +12,7 @@
       "type": "process",
       "problemMatcher": "$msCompile",
       "options": {
-        "cwd": "${workspaceFolder}/src"
+        "cwd": "${workspaceFolder}"
       }
     },
     {
@@ -31,7 +31,7 @@
       },
       "problemMatcher": "$msCompile",
       "options": {
-        "cwd": "${workspaceFolder}/src"
+        "cwd": "${workspaceFolder}"
       }
     },
     {
@@ -47,7 +47,7 @@
       "type": "process",
       "problemMatcher": "$msCompile",
       "options": {
-        "cwd": "${workspaceFolder}/src"
+        "cwd": "${workspaceFolder}"
       }
     },
     {
@@ -64,14 +64,14 @@
       "dependsOn": "clean release (functions)",
       "problemMatcher": "$msCompile",
       "options": {
-        "cwd": "${workspaceFolder}/src"
+        "cwd": "${workspaceFolder}"
       }
     },
     {
       "type": "func",
       "dependsOn": "build (functions)",
       "options": {
-        "cwd": "${workspaceFolder}/src"
+        "cwd": "${workspaceFolder}/ShortenerTools.Functions"
       },
       "command": "host start",
       "isBackground": true,
@@ -83,7 +83,7 @@
         "type": "process",
         "args": [
             "build",
-            "${workspaceFolder}/src/Cloud5mins.ShortenerTools.TinyBlazorAdmin/Cloud5mins.ShortenerTools.TinyBlazorAdmin.csproj",
+            "${workspaceFolder}/ShortenerTools.AppHost/ShortenerTools.AppHost.csproj",
             "/property:GenerateFullPaths=true",
             "/consoleloggerparameters:NoSummary"
         ],
@@ -95,7 +95,7 @@
         "type": "process",
         "args": [
             "publish",
-            "${workspaceFolder}/src/Cloud5mins.ShortenerTools.TinyBlazorAdmin/Cloud5mins.ShortenerTools.TinyBlazorAdmin.csproj",
+            "${workspaceFolder}/ShortenerTools.AppHost/ShortenerTools.AppHost.csproj",
             "/property:GenerateFullPaths=true",
             "/consoleloggerparameters:NoSummary"
         ],
@@ -109,7 +109,7 @@
             "watch",
             "run",
             "--project",
-            "${workspaceFolder}/src/Cloud5mins.ShortenerTools.TinyBlazorAdmin/Cloud5mins.ShortenerTools.TinyBlazorAdmin.csproj"
+            "${workspaceFolder}/ShortenerTools.AppHost/ShortenerTools.AppHost.csproj"
         ],
         "problemMatcher": "$msCompile"
     }
