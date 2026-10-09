@@ -17,7 +17,7 @@ separate operator steps.
 | `shortenertools-functions` Container App | New | Public HTTPS short-link redirects; exactly one replica, 0.25 vCPU / 0.5 GiB; only `UrlRedirect` enabled |
 | `admin` Container App | New | Public HTTPS, server-interactive Blazor administration; zero-to-one replicas; single-tenant Entra authentication |
 | `management-api` Container App | New | Internal HTTPS API for URL management, statistics, description generation, and manual posting; zero-to-one replicas |
-| `shortenertools-scheduled-posts` Container App | New | Internal-only timer worker; one replica; only `SchedulePostTimer`; disabled by default until an intentional cutover |
+| `shortenertools-scheduled-posts` Container App | New | Internal-only worker; one replica; `SchedulePostTimer` plus three Coffee timers; independently disabled by default until intentional cutovers |
 | Azure Container Registry | New | Stores the built application images used by the Container Apps |
 | Functions host storage account | New | Separate Azure Functions host state, leases, and checkpoints |
 | Application Insights component | New | Workspace-based application telemetry for all four apps |
@@ -35,6 +35,20 @@ the names above use the stable Aspire logical resource names where available.
 - Visitors reach the public redirect Container App over HTTPS. It enables only
   `UrlRedirect` and does not receive the admin API key, AI connection, or social
   credentials.
+- Coffee lives in the shared Functions assembly, replacing the standalone
+  Coffee project in the active deployment. The internal scheduler allowlists
+  `PostTeaserTimer` (Monday 17:00 UTC), `PostAnnouncementTimer` (daily 17:00 UTC),
+  and `PostArchiveTimer` (Monday 16:00 UTC), using
+  [guest source data](https://raw.githubusercontent.com/isaacrlevin/CoffeeAndOpenSource.com/main/data/guests.json)
+  and existing shared provider credentials. Coffee has its own default-disabled
+  gate; shortener cutover never enables it. Local/Staging block Coffee posting.
+- The management API key also protects `PostPublishHttp` (POST JSON string guest
+  key) and `PostTeaserHttp`/`PostAnnouncementHttp`/`PostArchiveHttp` (GET).
+  Production management permits manual Coffee posting with `PostSocials=true`;
+  sending also requires `ExternalPostingAllowed`. Never use these as smoke tests.
+  Disable the old Coffee host timers before enabling ACA Coffee; for rollback,
+  disable/drain ACA Coffee before restoring the old host. See the
+  [cutover checklist](azure-container-apps-migration.md#production-cutover).
 - Administrators sign in to the public `admin` app through Microsoft Entra ID.
   The server-side app calls `management-api` over Aspire service discovery and
   internal HTTPS, using a server-only API key that is not sent to browser code.
@@ -63,7 +77,7 @@ graph LR
   Admin -->|"Internal HTTPS · service discovery<br/>server-only API key"| API["management-api<br/>Internal · 0–1 replicas"]
   API -->|"Table endpoint · managed identity"| Data[("Existing Storage<br/>UrlsDetails + ClickStats")]
   Redirect -->|"Table endpoint · managed identity"| Data
-  Scheduler["shortenertools-scheduled-posts<br/>Internal only · 1 replica<br/>Timer disabled by default"] -->|"Table endpoint · managed identity"| Data
+  Scheduler["shortenertools-scheduled-posts<br/>Internal only · 1 replica<br/>Shortener + Coffee independently disabled"] -->|"Table endpoint · managed identity"| Data
   Redirect --> HostStorage[("New Functions host storage")]
   API --> HostStorage
   Scheduler --> HostStorage

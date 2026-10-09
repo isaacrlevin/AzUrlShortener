@@ -7,7 +7,7 @@ namespace ShortenerTools.Tests;
 [TestClass]
 public class AdminApiKeyTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("configured-key", "configured-key", true)]
     [DataRow("wrong-key", "configured-key", false)]
     [DataRow("", "configured-key", false)]

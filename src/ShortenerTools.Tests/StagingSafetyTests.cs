@@ -43,9 +43,7 @@ public class StagingSafetyTests
             EnvironmentName = "Staging",
             CustomDomain = "https://staging.example/"
         };
-        var service = new SchedulePost(
-            NullLoggerFactory.Instance, settings, null!,
-            new EmailService(NullLoggerFactory.Instance, settings), null!);
+        var service = new SchedulePost(settings, null!);
 
         Assert.AreEqual("https://staging.example/", service.ShortenerBase);
         await service.SchedulePostTimer(null!);

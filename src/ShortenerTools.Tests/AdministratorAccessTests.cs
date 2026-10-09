@@ -15,7 +15,7 @@ public class AdministratorAccessTests
     public void ConfiguredAdministratorIsAllowed() =>
         Assert.IsTrue(AdministratorAccess.IsAllowed(Identity(Tenant, Administrator), Tenant, Administrator));
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(Other, Administrator)]
     [DataRow(Tenant, Other)]
     [DataRow("", Administrator)]

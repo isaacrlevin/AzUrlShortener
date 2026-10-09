@@ -1,8 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
 		<CarpaNet_JsonContextName>ATProtoJsonContext</CarpaNet_JsonContextName>
 		<CarpaNet_LexiconAutoResolve>true</CarpaNet_LexiconAutoResolve>
 	</PropertyGroup>
@@ -13,7 +10,6 @@
 		<PackageReference Include="Azure.Identity" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
 		<PackageReference Include="Newtonsoft.Json" />
-		<PackageReference Include="System.Text.Json" />
 		<PackageReference Include="UAParser" />
 
 		<PackageReference Include="CarpaNet" />
@@ -31,5 +27,8 @@
 		<LexiconResolve Include="com.atproto.repo.createRecord" />
 		<LexiconResolve Include="com.atproto.repo.uploadBlob" />
 		<LexiconResolve Include="com.atproto.identity.resolveHandle" />
+	</ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="ShortenerTools.Tests" />
 	</ItemGroup>
 </Project>

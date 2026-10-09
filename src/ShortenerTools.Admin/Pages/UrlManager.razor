@@ -168,7 +168,7 @@
             await urlGrid.ReloadServerData();
     }
 
-    private async Task<GridData<ShortUrlEntity>> LoadUrlPage(GridState<ShortUrlEntity> state)
+    private async Task<GridData<ShortUrlEntity>> LoadUrlPage(GridState<ShortUrlEntity> state, CancellationToken cancellationToken)
     {
         if (!authorized)
             return new GridData<ShortUrlEntity> { Items = Array.Empty<ShortUrlEntity>(), TotalItems = 0 };
@@ -203,14 +203,18 @@
                 currentPage = 0;
                 query.Skip = 0;
             }
-            var page = await FetchUrlPage(query);
+            var page = await FetchUrlPage(query, cancellationToken);
             if (query.Skip > 0 && query.Skip >= page.TotalCount)
             {
                 currentPage = 0;
                 query.Skip = 0;
-                page = await FetchUrlPage(query);
+                page = await FetchUrlPage(query, cancellationToken);
             }
             return new GridData<ShortUrlEntity> { Items = page.UrlList, TotalItems = page.TotalCount };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex) when (ex is HttpRequestException or JsonException or TaskCanceledException)
         {
@@ -225,15 +229,16 @@
         }
     }
 
-    private async Task<ListResponse> FetchUrlPage(UrlListQuery query)
+    private async Task<ListResponse> FetchUrlPage(UrlListQuery query, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var serialized = JsonSerializer.Serialize(query);
         // Synchronizing the pager after a reset can ask for the same page again.
         if (loadedQuery == serialized && loadedPage != null)
             return loadedPage;
-        using var response = await Http.GetAsync("/api/UrlList?query=" + Uri.EscapeDataString(serialized));
+        using var response = await Http.GetAsync("/api/UrlList?query=" + Uri.EscapeDataString(serialized), cancellationToken);
         EnsureApiSuccess(response);
-        var page = await response.Content.ReadFromJsonAsync<ListResponse>();
+        var page = await response.Content.ReadFromJsonAsync<ListResponse>(cancellationToken: cancellationToken);
         if (page?.UrlList == null)
             throw new JsonException("The URL list response was empty.");
         loadedQuery = serialized;

@@ -10,6 +10,10 @@ $ErrorActionPreference = 'Stop'
 function Read-Template([string] $Name) {
     $source = Join-Path $ArtifactPath "$Name\$Name.bicep"
     $output = Join-Path $ArtifactPath "$Name\$Name.json"
+    if ($Name -eq 'main') {
+        $source = Join-Path $ArtifactPath 'main.bicep'
+        $output = Join-Path $ArtifactPath 'main.json'
+    }
     az bicep build --file $source --outfile $output
     if ($LASTEXITCODE -ne 0) { throw "Bicep compilation failed for $Name." }
     return Get-Content $output -Raw | ConvertFrom-Json
@@ -92,15 +96,26 @@ Assert-Condition (@($redirectEnv | Where-Object {
 }).Count -eq 0) 'Redirect must not receive AI/social/email credentials.'
 $schedulerFunctions = @($scheduler.properties.template.containers[0].env |
     Where-Object name -Like 'AzureFunctionsJobHost__functions__*')
-Assert-Condition ($schedulerFunctions.Count -eq 1 -and
-    $schedulerFunctions[0].value -eq 'SchedulePostTimer') 'Scheduler must only enable its timer.'
+$coffeeTimers = @('PostTeaserTimer', 'PostAnnouncementTimer', 'PostArchiveTimer')
+$expectedTimers = @('SchedulePostTimer') + $coffeeTimers
+Assert-Condition ($schedulerFunctions.Count -eq $expectedTimers.Count -and
+    @(Compare-Object $expectedTimers @($schedulerFunctions.value)).Count -eq 0) 'Scheduler must enable exactly the shortener and Coffee timers.'
 
 $apiEnv = $api.properties.template.containers[0].env
 $schedulerEnv = $scheduler.properties.template.containers[0].env
 foreach ($app in @($redirect, $api)) {
     Assert-Condition (@($app.properties.template.containers[0].env |
         Where-Object name -EQ 'AzureWebJobs.SchedulePostTimer.Disabled')[0].value -eq 'true') 'Redirect/API timers must always be disabled.'
+    foreach ($timer in $coffeeTimers) {
+        Assert-Condition (@($app.properties.template.containers[0].env |
+            Where-Object name -EQ "AzureWebJobs.$timer.Disabled")[0].value -eq 'true') "Redirect/API must disable $timer."
+    }
 }
+# Compile the subscription template and its infrastructure modules too.
+$null = Read-Template 'main'
+$coffeeDisabledValues = @($coffeeTimers | ForEach-Object {
+    @($schedulerEnv | Where-Object name -EQ "AzureWebJobs.$_.Disabled")[0].value
+})
 $timerDisabled = @($schedulerEnv | Where-Object name -EQ 'AzureWebJobs.SchedulePostTimer.Disabled')[0].value
 if ($DeploymentEnvironment -eq 'Production') {
     # The runtime input controls cutover, not a baked-in enabled timer.
@@ -109,11 +124,23 @@ if ($DeploymentEnvironment -eq 'Production') {
     $schedulerTemplate = Get-Content (Join-Path $ArtifactPath 'shortenertools-scheduled-posts/shortenertools-scheduled-posts.json') -Raw | ConvertFrom-Json
     Assert-Condition ($null -ne $schedulerTemplate.parameters.$parameterName) 'Scheduler disabled parameter must be declared.'
     Assert-Condition ($schedulerTemplate.parameters.$parameterName.defaultValue -eq 'true') 'Production scheduler must default disabled in its deployment module.'
+    foreach ($value in $coffeeDisabledValues) {
+        Assert-Condition ($value -eq "[parameters('coffee_scheduler_disabled_value')]" -and
+            $value -ne $timerDisabled) 'Coffee timers must share an independent disabled parameter, not the shortener gate.'
+    }
+    Assert-Condition ($schedulerTemplate.parameters.coffee_scheduler_disabled_value.defaultValue -eq 'true') 'Coffee must default disabled in its standalone module.'
+    foreach ($envVars in @($apiEnv, $schedulerEnv)) {
+        Assert-Condition (@($envVars | Where-Object name -EQ 'PostSocials')[0].value -eq 'True') 'Production Coffee must allow opted-in timers and administrator manual posting.'
+    }
     Assert-Condition (@($apiEnv | Where-Object name -EQ 'DeploymentName')[0].value -match '^\[parameters\(') 'AI deployment name must be parameter-backed.'
     Assert-Condition (-not [string]::IsNullOrWhiteSpace(@($apiEnv | Where-Object name -EQ 'ConnectionStrings__chat')[0].secretRef)) 'AI connection must be a secret reference.'
 }
 else {
     Assert-Condition ($timerDisabled -eq 'true') 'Staging scheduler must remain disabled, regardless of cutover inputs.'
+    Assert-Condition (@($coffeeDisabledValues | Where-Object { $_ -ne 'true' }).Count -eq 0) 'Staging Coffee timers must ignore cutover opt-ins.'
+    foreach ($envVars in @($apiEnv, $schedulerEnv)) {
+        Assert-Condition (@($envVars | Where-Object name -EQ 'PostSocials')[0].value -eq 'False') 'Staging Coffee must not post socials.'
+    }
     foreach ($app in @($redirect, $api, $scheduler)) {
         Assert-Condition (@($app.properties.template.containers[0].env |
             Where-Object name -EQ 'DisableExternalPosting')[0].value -eq 'True') 'Staging must block external posts.'
@@ -125,8 +152,14 @@ else {
     Assert-Condition (@($apiEnv | Where-Object name -EQ 'ConnectionStrings__chat').Count -eq 0) 'Staging must not receive AI credentials.'
 }
 Assert-Condition (@($apiEnv | Where-Object {
-    $_.name -like 'AzureFunctionsJobHost__functions__*' -and $_.value -in @('UrlRedirect', 'SchedulePostTimer')
+    $_.name -like 'AzureFunctionsJobHost__functions__*' -and $_.value -in (@('UrlRedirect') + $expectedTimers)
 }).Count -eq 0) 'API must not enable redirects or timer.'
+$expectedApiFunctions = @('UrlList', 'UrlCreate', 'UrlUpdate', 'UrlArchive', 'UrlStats',
+    'UrlClickStatsByDay', 'CreateDescription', 'SchedulePostHttp', 'TestShortUrl',
+    'PostPublishHttp', 'PostTeaserHttp', 'PostAnnouncementHttp', 'PostArchiveHttp')
+$apiFunctions = @($apiEnv | Where-Object name -Like 'AzureFunctionsJobHost__functions__*')
+Assert-Condition ($apiFunctions.Count -eq $expectedApiFunctions.Count -and
+    @(Compare-Object $expectedApiFunctions @($apiFunctions.value)).Count -eq 0) 'Management must allow exactly its HTTP functions, including Coffee.'
 Assert-Condition (@($apiEnv | Where-Object name -EQ 'AdminApiKey')[0].secretRef -eq 'adminapikey') 'API key must be a secret reference.'
 foreach ($app in @($redirect, $api, $scheduler)) {
     Assert-Condition (@($app.properties.template.containers[0].env |
@@ -135,4 +168,4 @@ foreach ($app in @($redirect, $api, $scheduler)) {
 $adminEnv = $admin.properties.template.containers[0].env
 Assert-Condition (@($adminEnv | Where-Object name -EQ 'Entra__ClientSecret')[0].secretRef -eq 'entra--clientsecret') 'Entra client secret must be a secret reference.'
 Assert-Condition (@($adminEnv | Where-Object name -EQ 'Entra__AdministratorObjectId').Count -eq 1) 'Admin must receive its allowed object ID.'
-Write-Output 'ACA ingress, scaling, function isolation, storage, secrets, AI, scheduler cutover and workspace-based Insights/4-app telemetry assertions passed.'
+Write-Output 'ACA ingress, scaling, function isolation, storage, secrets, AI, independent shortener/Coffee scheduler cutover and workspace-based Insights/4-app telemetry assertions passed.'

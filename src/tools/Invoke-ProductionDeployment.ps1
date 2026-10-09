@@ -7,7 +7,8 @@ param(
     [switch] $LoadUserSecrets,
     [string] $AppHostProject = (Join-Path $PSScriptRoot '../ShortenerTools.AppHost/ShortenerTools.AppHost.csproj'),
     [string] $OutputPath = (Join-Path $PSScriptRoot '../../aspire-output'),
-    [switch] $EnableScheduler
+    [switch] $EnableScheduler,
+    [switch] $EnableCoffeeScheduler
 )
 
 $ErrorActionPreference = 'Stop'
@@ -159,7 +160,9 @@ try {
     # may silently opt in to scheduled posts. The switch is the cutover boundary.
     Set-DeploymentEnvironment 'Parameters__scheduler-disabled' (-not $EnableScheduler.IsPresent).ToString().ToLowerInvariant()
     Set-DeploymentEnvironment 'Parameters__scheduler_disabled' (-not $EnableScheduler.IsPresent).ToString().ToLowerInvariant()
-    Write-Output "Production configuration validated. Scheduler enabled: $($EnableScheduler.IsPresent)."
+    Set-DeploymentEnvironment 'Parameters__coffee-scheduler-disabled' (-not $EnableCoffeeScheduler.IsPresent).ToString().ToLowerInvariant()
+    Set-DeploymentEnvironment 'Parameters__coffee_scheduler_disabled' (-not $EnableCoffeeScheduler.IsPresent).ToString().ToLowerInvariant()
+    Write-Output "Production configuration validated. Scheduler enabled: $($EnableScheduler.IsPresent). Coffee scheduler enabled: $($EnableCoffeeScheduler.IsPresent)."
     if ($Mode -eq 'Deploy') {
         $storageAccount = [Environment]::GetEnvironmentVariable('Parameters__existing-storage-account')
         $storageGroup = [Environment]::GetEnvironmentVariable('Parameters__existing-storage-resource-group')

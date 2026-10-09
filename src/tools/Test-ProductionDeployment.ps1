@@ -28,6 +28,7 @@ function aspire {
     $global:ProductionDeploymentTestState.Invocations += ,@($args)
     $global:ProductionDeploymentTestState.Observed = @{}
     foreach ($key in @('Parameters__scheduler-disabled', 'Parameters__azure-openai-deployment-name',
+        'Parameters__scheduler_disabled', 'Parameters__coffee-scheduler-disabled', 'Parameters__coffee_scheduler_disabled',
         'ConnectionStrings__chat', 'Parameters__twitter-consumer-key', 'Parameters__admin-api-key',
         'Parameters__custom-domain', 'Parameters__default-redirect-url',
         'Parameters__existing-storage-account', 'Parameters__existing-storage-resource-group')) {
@@ -96,11 +97,15 @@ try {
 
     # Inherited timer opt-in must not bypass explicit cutover switch.
     [Environment]::SetEnvironmentVariable('Parameters__scheduler-disabled', 'false', 'Process')
+    [Environment]::SetEnvironmentVariable('Parameters__coffee-scheduler-disabled', 'false', 'Process')
+    $env:Parameters__coffee_scheduler_disabled = 'false'
     $env:Parameters__admin_api_key = 'synthetic-environment-override'
     $result = & $helper @options -Mode Publish -OutputPath $scratch
     $observed = $global:ProductionDeploymentTestState.Observed
     $invocations = $global:ProductionDeploymentTestState.Invocations
     Assert ($observed['Parameters__scheduler-disabled'] -eq 'true') 'Publish must default to disabled scheduler.'
+    Assert ($observed['Parameters__coffee-scheduler-disabled'] -eq 'true' -and
+        $observed['Parameters__coffee_scheduler_disabled'] -eq 'true') 'Publish must normalize both Coffee forms to disabled.'
     Assert ($observed['Parameters__azure-openai-deployment-name'] -eq 'synthetic-model') 'AI deployment must map from Functions settings.'
     Assert ($observed['Parameters__admin-api-key'] -eq 'synthetic-environment-override') 'Environment must override local configuration.'
     Assert ($observed['Parameters__custom-domain'] -eq 'https://production.example.com') 'Production domain must override local Parameters.'
@@ -112,6 +117,8 @@ try {
     Assert (($result -join ' ') -notlike '*synthetic-private*') 'Tool output must be suppressed.'
     Assert ($invocations[0][0] -eq 'publish' -and $invocations[0] -contains '--non-interactive') 'Publish must be noninteractive.'
     Assert ([Environment]::GetEnvironmentVariable('Parameters__scheduler-disabled') -eq 'false') 'Inherited timer setting must be restored.'
+    Assert ([Environment]::GetEnvironmentVariable('Parameters__coffee-scheduler-disabled') -eq 'false' -and
+        $env:Parameters__coffee_scheduler_disabled -eq 'false') 'Inherited Coffee settings must be restored.'
     Assert ([string]::IsNullOrEmpty([Environment]::GetEnvironmentVariable('Parameters__admin-api-key'))) 'Normalized environment must be restored.'
 
     $env:ConnectionStrings__chat = 'Endpoint=https://existing.example.com;Key=synthetic-private'
@@ -125,7 +132,22 @@ try {
     $invocations = $global:ProductionDeploymentTestState.Invocations
     Assert ($invocations[1][0] -eq 'deploy' -and $invocations[1] -contains '--clear-cache') 'Explicit deploy must invalidate parameter cache.'
     Assert ($observed['Parameters__scheduler-disabled'] -eq 'false') 'Explicit cutover must enable timer.'
+    Assert ($observed['Parameters__scheduler_disabled'] -eq 'false') 'Shortener gate must normalize both forms.'
+    Assert ($observed['Parameters__coffee-scheduler-disabled'] -eq 'true' -and
+        $observed['Parameters__coffee_scheduler_disabled'] -eq 'true') 'Shortener opt-in must never enable Coffee.'
     Assert ($observed['ConnectionStrings__chat'] -eq $env:ConnectionStrings__chat) 'Existing chat connection must take precedence.'
+    $result = & $helper @options -Mode Deploy -EnableCoffeeScheduler
+    $observed = $global:ProductionDeploymentTestState.Observed
+    Assert ($observed['Parameters__scheduler-disabled'] -eq 'true' -and
+        $observed['Parameters__scheduler_disabled'] -eq 'true') 'Coffee opt-in must never enable shortener.'
+    Assert ($observed['Parameters__coffee-scheduler-disabled'] -eq 'false' -and
+        $observed['Parameters__coffee_scheduler_disabled'] -eq 'false') 'Explicit Coffee cutover must normalize both forms to enabled.'
+    $result = & $helper @options -Mode Deploy -EnableScheduler -EnableCoffeeScheduler
+    Assert ($global:ProductionDeploymentTestState.Observed['Parameters__scheduler-disabled'] -eq 'false' -and
+        $global:ProductionDeploymentTestState.Observed['Parameters__coffee-scheduler-disabled'] -eq 'false') 'Both schedulers require both switches.'
+    $result = & $helper @options -Mode Deploy
+    Assert ($global:ProductionDeploymentTestState.Observed['Parameters__scheduler-disabled'] -eq 'true' -and
+        $global:ProductionDeploymentTestState.Observed['Parameters__coffee-scheduler-disabled'] -eq 'true') 'A default redeploy must disable both schedulers after cutover.'
     $global:ProductionDeploymentTestState.ExitCode = 1
     Expect-Failure { & $helper @options -Mode Deploy } 'Output suppressed'
     Assert ($env:ConnectionStrings__chat -match 'existing.example.com') 'Failure must restore inherited environment.'
@@ -147,7 +169,7 @@ try {
     $values.Remove('DeploymentName')
     @{ Values = $values } | ConvertTo-Json | Set-Content $settings
     Expect-Failure { & $helper @options } 'Parameters__azure-openai-deployment-name'
-    Write-Output 'Production helper offline configuration, precedence, redaction, restoration, and cutover tests passed.'
+    Write-Output 'Production helper offline configuration, precedence, redaction, restoration, and independent shortener/Coffee cutover tests passed.'
 }
 finally {
     Remove-Item Function:aspire

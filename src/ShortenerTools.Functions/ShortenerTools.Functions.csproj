@@ -1,10 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net10.0</TargetFramework>
 		<AzureFunctionsVersion>v4</AzureFunctionsVersion>
 		<OutputType>Exe</OutputType>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
 		<UserSecretsId>ec466037-9a72-4ed2-ab84-28c517f1b122</UserSecretsId>
 	</PropertyGroup>
 	<ItemGroup>
@@ -39,11 +36,10 @@
 		<PackageReference Include="Microsoft.Extensions.AI" />
 		<PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
 		<PackageReference Include="Microsoft.Extensions.Azure" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
 		<PackageReference Include="Newtonsoft.Json" />
 		<PackageReference Include="OllamaSharp" />
-		<PackageReference Include="SixLabors.ImageSharp" />
-		<PackageReference Include="System.Text.Json" />
+		<PackageReference Include="SkiaSharp" />
+		<PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
 		<PackageReference Include="CarpaNet" />
 		<PackageReference Include="Mastonet" />
 

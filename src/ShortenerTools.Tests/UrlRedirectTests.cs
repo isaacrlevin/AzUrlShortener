@@ -10,7 +10,7 @@ namespace ShortenerTools.Tests;
 [TestClass]
 public class UrlRedirectTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(true, false, "https://fallback.example")]
     [DataRow(false, true, "https://fallback.example")]
     [DataRow(true, false, null)]
@@ -73,7 +73,7 @@ public class UrlRedirectTests
         storage.Verify(x => x.SaveClickStatsEntity(It.IsAny<ClickStatsEntity>()), Times.Never);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("robots.txt")]
     [DataRow("favicon.ico")]
     public async Task RobotsAndDottedPathsStillBypassStorage(string path)
@@ -90,11 +90,11 @@ public class UrlRedirectTests
     [TestMethod]
     public void ConstructorRejectsNullDependencies()
     {
-        Assert.ThrowsException<ArgumentNullException>(() =>
+        Assert.ThrowsExactly<ArgumentNullException>(() =>
             new UrlRedirect(null!, new ShortenerSettings(), new StorageTableHelper()));
-        Assert.ThrowsException<ArgumentNullException>(() =>
+        Assert.ThrowsExactly<ArgumentNullException>(() =>
             new UrlRedirect(NullLoggerFactory.Instance, null!, new StorageTableHelper()));
-        Assert.ThrowsException<ArgumentNullException>(() =>
+        Assert.ThrowsExactly<ArgumentNullException>(() =>
             new UrlRedirect(NullLoggerFactory.Instance, new ShortenerSettings(), null!));
     }
 }

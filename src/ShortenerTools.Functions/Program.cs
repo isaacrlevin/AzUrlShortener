@@ -2,6 +2,9 @@ using ShortenerTools.Core.Domain;
 using ShortenerTools.Core.Domain.Socials.LinkedIn.Models;
 using ShortenerTools.Core.Domain.Socials.Threads;
 using ShortenerTools.Functions;
+using ShortenerTools.Core.Domain.Coffee;
+using ShortenerTools.Core.Domain.Socials;
+using ShortenerTools.Functions.Socials;
 using LinkedIn;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.Functions.Worker;
@@ -40,6 +43,9 @@ else if (!string.IsNullOrWhiteSpace(tableEndpoint))
 }
 
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient<ICoffeeGuestFeed, CoffeeGuestFeed>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<ISocialMediaPublisher, SocialMediaPublisher>();
 builder.Services.AddSingleton<ILinkedInManager, LinkedInManager>();
 builder.Services.AddSingleton<IThreadsManager, ThreadsManager>();
 builder.Services.AddSingleton<EmailService, EmailService>();

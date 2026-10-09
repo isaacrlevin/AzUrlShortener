@@ -9,13 +9,42 @@ The `feature/azure-container-apps-migration` implementation uses the .NET Aspire
 | `shortenertools-functions` | Public HTTPS | Exactly one replica, 0.25 vCPU / 0.5 GiB; only `UrlRedirect` |
 | `management-api` | Internal HTTPS | Minimum zero, maximum one; management, statistics, description-generation and manual social-post endpoints |
 | `admin` | Public HTTPS | Minimum zero, maximum one; server-interactive Blazor with Microsoft Entra sign-in |
-| `shortenertools-scheduled-posts` | Internal only | Exactly one replica; only `SchedulePostTimer` |
+| `shortenertools-scheduled-posts` | Internal only | Exactly one replica; `SchedulePostTimer` and the three Coffee timers; independent cutover gates |
 
 The existing Functions assembly is reused in three independently configured containers with explicit function allowlists. This preserves the existing API payloads and storage behavior instead of rewriting every handler into ASP.NET Core. No Azure Functions hosting resource or Static Web App is required. Public redirects have no access to admin secrets, social credentials, or AI services. Management requests originate on the authenticated Blazor server, use Aspire service discovery, and carry a server-only API key. The private API validates that key as an additional boundary; it is never included in browser assets.
 
 The admin accepts only the configured Entra tenant and administrator object ID. Other Microsoft accounts do not receive the `admin` role or a sign-in cookie. The server-hosted UI preserves MudBlazor components, paging, clipboard support, and browser-local statistics dates. Its HTTP calls no longer rely on SWA routing or mock authentication.
 
 The scheduled container retains the original weekday UTC cron expression, `0 0 13,16,19,23 * * 1-5`. It stays running so the Functions timer listener remains available. The timer defaults disabled in Production until explicit cutover, is always disabled locally/in Staging, and is excluded from the public redirect and management containers. Each Functions service has a different host ID to isolate leases/checkpoints. This preserves scheduled posting, but adds another always-running container to the bill. It is deliberately not an HTTP scale-to-zero timer, which would miss executions.
+
+### Coffee scheduler
+
+Coffee handlers now live in `ShortenerTools.Functions`; the standalone
+`CoffeeOpenSourceScheduler` project is removed from the active solution/deployment.
+There is no separate Coffee Container App or additional provider secret set.
+The existing one-replica scheduler also allowlists these legacy function names:
+
+| Function | UTC cron | Purpose |
+|---|---|---|
+| `PostTeaserTimer` | `0 0 17 * * MON` | Monday teaser |
+| `PostAnnouncementTimer` | `0 0 17 * * *` | Daily announcement |
+| `PostArchiveTimer` | `0 0 16 * * MON` | Monday archive |
+
+Guest data comes from
+[`guests.json`](https://raw.githubusercontent.com/isaacrlevin/CoffeeAndOpenSource.com/main/data/guests.json).
+Coffee reuses the configured social providers/shared publisher credentials.
+Sending requires both `ExternalPostingAllowed` and `PostSocials`. Production
+management and scheduler containers set `PostSocials=true`; **timers still
+require their own explicit Coffee cutover**. Local/Staging set it false and
+hard-disable all Coffee timers. Staging also blocks external posting and receives
+no provider credentials.
+
+Only the internal management allowlist includes `PostPublishHttp` (POST with a
+JSON string guest key, for example `"guest-key"`), `PostTeaserHttp`,
+`PostAnnouncementHttp`, and `PostArchiveHttp` (GET). These migrated endpoints
+require the management API key, like other management calls; they are not public
+redirect routes. Production administrators can send Coffee posts manually even
+when its timers are disabled. Never call these endpoints as harmless smoke tests.
 
 ## Storage and configuration
 
@@ -54,6 +83,7 @@ Set parameters on the deployment process through environment variables or a prot
 | Azure OpenAI connection for description generation | `ConnectionStrings__chat` |
 | Azure OpenAI model deployment name | `Parameters__azure_openai_deployment_name` |
 | Timer disabled state (default `true`; helper controls through `-EnableScheduler`) | `Parameters__scheduler_disabled` |
+| Coffee timers disabled state (independent default `true`; helper controls through `-EnableCoffeeScheduler`) | `Parameters__coffee_scheduler_disabled` |
 | Social/email integration secrets | `Parameters__twitter_consumer_key`, `Parameters__twitter_consumer_secret`, `Parameters__twitter_access_token`, `Parameters__twitter_access_secret`, `Parameters__mastodon_access_token`, `Parameters__linkedin_access_token`, `Parameters__bluesky_username`, `Parameters__bluesky_password`, `Parameters__threads_token`, `Parameters__communication_services_connection_string`, `Parameters__email_from`, `Parameters__email_to`, `Parameters__twitter_via_handle` |
 
 Keep your existing social/email and Azure OpenAI configuration when migrating. Description generation and scheduled posting have their own usage charges. The redirect container does not require those credentials. `custom-domain` supplies the complete short-link base URL, including the scheme and without a trailing slash (for example, `https://isaacl.dev`); `default-redirect-url` must be an absolute URL. DNS/certificate binding is a separate operator step, not performed by setting that parameter.
@@ -101,7 +131,7 @@ The workflow uses `AZURE_TENANT_ID` for both the deployment and administrator te
 
 Use `--environment Staging` with a dedicated Azure resource group. In this environment the AppHost provisions a new data storage account instead of attaching the production account, ignores local production-data opt-ins, and keeps all four application containers. `UrlsDetails` and `ClickStats` are created on first access; no live records are copied.
 
-Staging disables the scheduled timer and blocks social/email sends at the application boundary, even if a caller attempts to enable posting. No social/email credentials or AI connection are required or passed to the containers. Description generation returns HTTP 503 in this environment. Production receives configured integrations but defaults its timer disabled until explicit cutover. Manual posting remains available to the authenticated administrator; avoid using it against live accounts during migration checks.
+Staging disables all shortener/Coffee timers and blocks social/email sends at the application boundary, even if a caller attempts to enable posting. No social/email credentials or AI connection are required or passed to the containers. Description generation returns HTTP 503 in this environment. Production receives configured integrations but defaults both scheduler gates disabled until their independent cutovers. Manual posting remains available to the authenticated administrator; avoid using it against live accounts during migration checks.
 
 Supply staging-specific Entra tenant/client/secret, administrator object ID, and API key along with `Azure__SubscriptionId`, `Azure__Location`, and `Azure__ResourceGroup`. Do not use the production GitHub workflow: it is explicitly bound to Production. Publish and deploy with the staging environment:
 
@@ -130,9 +160,9 @@ Staging credentials are stored only in local AppHost user secrets under `Staging
 2. Register the new admin URL in Entra. Confirm only your account can access URL Manager/Statistics; confirm sign-out and rejected-account behavior.
 3. Confirm the public app enables only `UrlRedirect`, stays at one replica, and has no management routes. Confirm API ingress is internal and unauthenticated/keyless requests are rejected.
 4. Verify known, unknown, archived, and bot links and click records against the existing tables. Verify create/edit/archive, pagination, description generation, and browser-time-zone statistics.
-5. Confirm the scheduler has only `SchedulePostTimer`, its distinct host ID and working provider credentials. Disable the old timer before redeploying with `enable_scheduled_posting=true` (workflow) or `-EnableScheduler` (helper). Without the opt-in, every helper/workflow redeploy disables the new timer; include it deliberately on subsequent deployments after cutover.
+5. Confirm the scheduler has exactly `SchedulePostTimer`, `PostTeaserTimer`, `PostAnnouncementTimer`, and `PostArchiveTimer`, its distinct host ID and configured shared provider credentials. Disable the old shortener timer before redeploying with `enable_scheduled_posting=true` (workflow) or `-EnableScheduler` (helper). Separately disable **all three old Coffee host timers** (or stop the old Coffee host and its deployment automation) before opting in with `enable_coffee_scheduled_posting=true` or `-EnableCoffeeScheduler`. Do not use manual old/new Coffee endpoints concurrently with cutover. Distinct host IDs/storage do not deduplicate executions across old/new hosts. Without each opt-in, every helper/workflow redeploy disables that scheduler; repeat each desired switch deliberately after cutover.
 6. Bind the existing short-link custom domain to ACA ingress with domain-validation DNS records and a managed certificate. Lower DNS TTL ahead of time and switch the CNAME/A record only after checking redirects.
-7. For rollback, restore the old domain target and disable the new scheduler before re-enabling the old one. Both deployments use the same table schema; no reverse data migration is needed.
+7. For rollback, restore the old domain target and disable the new shortener scheduler before re-enabling the old one. For Coffee rollback, redeploy without the Coffee opt-in and verify all three ACA timers are disabled and in-flight executions have completed **before** re-enabling the old Coffee host. Keep its deployable revision/configuration available until migration is proven; removal of the standalone project does not stop an already deployed host. Both shortener deployments use the same table schema; no reverse data migration is needed.
 
 ## Cost impact
 

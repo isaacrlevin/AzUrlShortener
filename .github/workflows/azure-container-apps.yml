@@ -17,6 +17,10 @@ on:
         description: Enable ACA timer ONLY after disabling the legacy production timer
         type: boolean
         default: false
+      enable_coffee_scheduled_posting:
+        description: Enable Coffee timers ONLY after disabling the old Coffee host timers
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -56,6 +60,8 @@ jobs:
         run: |
           $output = Join-Path $env:RUNNER_TEMP 'aca-staging-preview'
           [Environment]::SetEnvironmentVariable('Parameters__scheduler-disabled', 'false')
+          [Environment]::SetEnvironmentVariable('Parameters__coffee-scheduler-disabled', 'false')
+          [Environment]::SetEnvironmentVariable('Parameters__coffee_scheduler_disabled', 'false')
           aspire publish --apphost src/ShortenerTools.AppHost/ShortenerTools.AppHost.csproj --environment Staging --non-interactive -o $output
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & .\src\tools\Test-AcaArtifacts.ps1 -ArtifactPath $output -DeploymentEnvironment Staging
@@ -122,6 +128,8 @@ jobs:
         shell: pwsh
         env:
           ENABLE_SCHEDULER: ${{ inputs.enable_scheduled_posting }}
+          ENABLE_COFFEE_SCHEDULER: ${{ inputs.enable_coffee_scheduled_posting }}
         run: |
           $enableScheduler = $env:ENABLE_SCHEDULER -eq 'true'
-          ./src/tools/Invoke-ProductionDeployment.ps1 -Mode Deploy -EnableScheduler:$enableScheduler
+          $enableCoffeeScheduler = $env:ENABLE_COFFEE_SCHEDULER -eq 'true'
+          ./src/tools/Invoke-ProductionDeployment.ps1 -Mode Deploy -EnableScheduler:$enableScheduler -EnableCoffeeScheduler:$enableCoffeeScheduler

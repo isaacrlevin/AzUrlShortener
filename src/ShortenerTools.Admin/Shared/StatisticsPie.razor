@@ -1,6 +1,6 @@
 <MudPaper Class="pa-4" Outlined="true">
     <MudText Typo="Typo.h6">@Title</MudText>
-    <MudChart ChartType="ChartType.Pie" InputData="counts" InputLabels="labels" Width="100%" Height="250px" />
+    <MudChart T="double" ChartType="ChartType.Pie" ChartSeries="series" ChartLabels="labels" Width="100%" Height="250px" />
     <MudSimpleTable Dense="true" aria-label="@Title">
         <thead><tr><th>Category</th><th>Clicks</th></tr></thead>
         <tbody>
@@ -19,6 +19,7 @@
 
     private string[] labels = Array.Empty<string>();
     private double[] counts = Array.Empty<double>();
+    private List<ChartSeries<double>> series = new();
 
     protected override void OnParametersSet()
     {
@@ -38,5 +39,6 @@
             labels = labels.Append("Other").ToArray();
             counts = counts.Append((double)otherCount).ToArray();
         }
+        series = new() { new ChartSeries<double> { Name = Title, Data = counts } };
     }
 }

@@ -7,7 +7,7 @@ namespace ShortenerTools.Tests;
 [TestClass]
 public class DailyClickAggregationTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("2026-10-06 00:30")]
     [DataRow("2026-10-06T00:30:00Z")]
     public void ServerHostedDetailsMatchBrowserCalendarDates(string timestamp)
@@ -87,7 +87,7 @@ public class DailyClickAggregationTests
         Assert.AreEqual(2, items[1].Count);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("invalid", null)]
     [DataRow("2026-02-30", null)]
     [DataRow("10/01/2026", null)]
@@ -96,23 +96,23 @@ public class DailyClickAggregationTests
     [DataRow("2026-10-02", "2026-10-01")]
     public void InvalidDatesAreRejected(string? start, string? end)
     {
-        Assert.ThrowsException<ArgumentException>(() => new DailyClickAggregation(
+        Assert.ThrowsExactly<ArgumentException>(() => new DailyClickAggregation(
             new UrlClickStatsRequest(null) { StartDate = start, EndDate = end }));
     }
 
     [TestMethod]
     public void InvalidTimeZoneAndNullInputAreRejected()
     {
-        Assert.ThrowsException<ArgumentException>(() => new DailyClickAggregation(
+        Assert.ThrowsExactly<ArgumentException>(() => new DailyClickAggregation(
             new UrlClickStatsRequest(null) { TimeZoneId = "not-a-time-zone" }));
-        Assert.ThrowsException<ArgumentNullException>(() => new DailyClickAggregation(null!));
+        Assert.ThrowsExactly<ArgumentNullException>(() => new DailyClickAggregation(null!));
     }
 
     [TestMethod]
     public void MalformedStoredDatesAreNotSilentlyDropped()
     {
         var aggregation = new DailyClickAggregation(new UrlClickStatsRequest(null));
-        Assert.ThrowsException<FormatException>(() => aggregation.Add("invalid"));
+        Assert.ThrowsExactly<FormatException>(() => aggregation.Add("invalid"));
     }
 
     [TestMethod]

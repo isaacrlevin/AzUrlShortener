@@ -202,12 +202,14 @@ dispatch; creating this file locally does not make it available on GitHub.
 ```powershell
 # Intentional deployment, but ACA timer remains disabled.
 gh workflow run azure-container-apps.yml --repo isaacrlevin/AzUrlShortener --ref main `
-    -f environment=production -f enable_scheduled_posting=false
+    -f environment=production -f enable_scheduled_posting=false -f enable_coffee_scheduled_posting=false
 ```
 
 There is no automatic production deploy on push and no DNS mutation in this
 workflow. The helper clears resolved deployment cache on explicit deploy so a
 previous enabled timer cannot silently survive a later default-disabled run.
+Both workflow booleans default false and are independent; enabling shortener
+posting never implicitly enables Coffee.
 
 ## Scheduler cutover (separate intentional operation)
 
@@ -222,6 +224,42 @@ Repeat that opt-in on subsequent deployments if the ACA timer should stay
 enabled; omitting it disables ACA scheduling. Manual administrator posting is
 still live in Production and can send real social/email messages; do not use it
 as a harmless smoke test. See the [migration cutover/rollback checklist](azure-container-apps-migration.md#production-cutover).
+
+Coffee has its own `coffee-scheduler-disabled` parameter; the existing scheduler's
+standalone Bicep module declares `coffee_scheduler_disabled_value`. Both default
+to string `true`; this is not a separate Coffee module or Container App.
+`PostTeaserTimer` runs `0 0 17 * * MON`, `PostAnnouncementTimer` runs
+`0 0 17 * * *`, and `PostArchiveTimer` runs `0 0 16 * * MON` (UTC).
+They share the existing internal one-replica scheduled-post container and
+provider credentials, not another Coffee host or new secrets. Their source is
+[`guests.json`](https://raw.githubusercontent.com/isaacrlevin/CoffeeAndOpenSource.com/main/data/guests.json).
+The migrated Functions assembly replaces the standalone Coffee project in the
+active solution/deployment.
+
+Disable all three timers on the old Coffee host (or stop it and its deployment
+automation) **before** setting workflow `enable_coffee_scheduled_posting=true`
+or helper `-EnableCoffeeScheduler`. Include that opt-in on every later deploy
+that should keep Coffee scheduling enabled. The helper overwrites both
+`Parameters__coffee-scheduler-disabled` and `Parameters__coffee_scheduler_disabled`
+from the switch, ignoring inherited settings and clearing deployment cache.
+`-EnableScheduler` does not affect Coffee; `-EnableCoffeeScheduler` does not
+affect shortener posting. Omitting both disables both on redeploy.
+
+Local/Staging force all Coffee timers disabled and `PostSocials=false`.
+Production scheduler and management set `PostSocials=true`, so Coffee sends
+still require `ExternalPostingAllowed` and (for timers) the Coffee cutover.
+Manual Coffee endpoints are protected by the internal management API key:
+`PostPublishHttp` accepts POST with a JSON string guest key; `PostTeaserHttp`,
+`PostAnnouncementHttp`, and `PostArchiveHttp` use GET. They can send real
+production posts even when timers are disabled; public redirects still allow
+only `UrlRedirect`.
+
+For Coffee rollback, redeploy with Coffee opt-in omitted, verify all ACA Coffee
+timers disabled and in-flight calls drained, then restore the old Coffee host.
+Never run both sets of timers concurrently; host IDs/leases do not provide
+cross-host deduplication. Retain the old host's deployable revision/configuration
+until cutover is proven; removing its project does not shut down deployed Azure
+resources.
 
 ## Application Insights telemetry
 
@@ -336,6 +374,7 @@ The direct publish above deliberately needs no real deployment credentials. The
 helper tests use synthetic fixtures and a mocked Aspire executable; they never
 open the actual user-secret store or call the cloud. The checker asserts the
 parameter-shaped timer, disabled module default, AI deployment/secret wiring,
+independent Coffee gate/defaults, Coffee timer/HTTP allowlists and Staging blocks,
 ingress, scaling, isolated function allowlists, storage references, a linked
 Application Insights/workspace pair, all four generated connection references,
 distinct telemetry roles, and host/worker OpenTelemetry settings. Application

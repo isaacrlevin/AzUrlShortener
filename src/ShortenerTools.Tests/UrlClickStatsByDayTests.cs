@@ -13,7 +13,7 @@ namespace ShortenerTools.Tests;
 [TestClass]
 public class UrlClickStatsByDayTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(null, "https://short.example/link")]
     [DataRow("https://custom.example/", "https://custom.example/link")]
     public async Task ReturnsUpstreamShapeAndForwardsOptionalFilters(string? domain, string expectedUrl)
@@ -55,7 +55,7 @@ public class UrlClickStatsByDayTests
         Assert.AreEqual(0, result.Items.Count);
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("")]
     [DataRow("null")]
     [DataRow("{")]
@@ -98,7 +98,7 @@ public class UrlClickStatsByDayTests
     [TestMethod]
     public async Task NullRequestIsRejected()
     {
-        await Assert.ThrowsExceptionAsync<ArgumentNullException>(() =>
+        await Assert.ThrowsExactlyAsync<ArgumentNullException>(() =>
             CreateFunction(new StorageTableHelper()).Run(null!));
     }
 

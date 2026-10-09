@@ -33,15 +33,14 @@ else
     {
         <MudPaper Class="pa-4 mb-4" Outlined="true">
             <MudText Typo="Typo.h6">Click Stats</MudText>
-            <MudTimeSeriesChart ChartSeries="dailySeries" TimeLabelFormat="MM/dd/yyyy"
-                                TimeLabelSpacing="@TimeSpan.FromDays(1)" DataMarkerTooltipTimeLabelFormat="MM/dd/yyyy"
-                                Width="100%" Height="350px" ChartOptions="chartOptions" />
+            <MudChart T="double" ChartType="ChartType.Timeseries" ChartSeries="dailySeries"
+                      Width="100%" Height="350px" ChartOptions="chartOptions" />
             <MudSimpleTable Dense="true" Class="mt-2" aria-label="Clicks by day">
                 <thead><tr><th>Date</th><th>Click(s) by Day</th></tr></thead>
                 <tbody>
                     @for (var i = (dailyPage - 1) * DailyPageSize; i < Math.Min(dailyPage * DailyPageSize, dailyLabels.Length); i++)
                     {
-                        <tr><td>@dailyLabels[i]</td><td>@dailySeries[0].Data[i].Value</td></tr>
+                        <tr><td>@dailyLabels[i]</td><td>@dailySeries[0].Data[i].Y</td></tr>
                     }
                 </tbody>
             </MudSimpleTable>
@@ -85,14 +84,22 @@ else
     private List<ClickStatsEntity> clicks = new();
     private List<ClickStatsEntity> filteredClicks = new();
     private DateRange dateRange;
-    private List<TimeSeriesChartSeries> dailySeries = new();
+    private List<ChartSeries<double>> dailySeries = new();
     private string[] dailyLabels = Array.Empty<string>();
     private const int DailyPageSize = 10;
     private int dailyPage = 1;
     private int DailyPageCount => (dailyLabels.Length + DailyPageSize - 1) / DailyPageSize;
     private int loadVersion;
     private TimeZoneInfo browserTimeZone;
-    private readonly ChartOptions chartOptions = new() { YAxisTicks = 1, LineStrokeWidth = 2 };
+    private readonly TimeSeriesChartOptions chartOptions = new()
+    {
+        YAxisTicks = 1,
+        LineStrokeWidth = 2,
+        ShowDataMarkers = true,
+        TimeLabelFormat = "MM/dd/yyyy",
+        TimeLabelSpacing = TimeSpan.FromDays(1),
+        TooltipTimeLabelFormat = "MM/dd/yyyy"
+    };
 
     protected override async Task OnParametersSetAsync()
     {
@@ -166,12 +173,11 @@ else
             dailyLabels = dailyResult.Items.Select(x => x.DateClicked.ToString("MM/dd/yyyy")).ToArray();
             dailySeries = new()
             {
-                new TimeSeriesChartSeries
+                new ChartSeries<double>
                 {
                     Name = "Click(s) by Day",
-                    ShowDataMarkers = true,
                     Data = dailyResult.Items.Select(x =>
-                        new TimeSeriesChartSeries.TimeValue(x.DateClicked, x.Count)).ToList()
+                        (x.DateClicked, (double)x.Count)).ToArray()
                 }
             };
         }

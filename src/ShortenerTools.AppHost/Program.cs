@@ -9,6 +9,10 @@ var isStaging = builder.Environment.IsStaging();
 // A new production deployment must not race the still-live legacy timer.
 // Only an explicit cutover input may enable the ACA scheduler.
 var schedulerDisabled = builder.AddParameter("scheduler-disabled", "true", publishValueAsDefault: true);
+// Coffee cutover is independent of shortener posting and its legacy host.
+var coffeeSchedulerDisabled = builder.AddParameter("coffee-scheduler-disabled", "true", publishValueAsDefault: true);
+string[] coffeeTimers = ["PostTeaserTimer", "PostAnnouncementTimer", "PostArchiveTimer"];
+var coffeePostingAllowed = !builder.ExecutionContext.IsRunMode && builder.Environment.IsProduction();
 var aiDeploymentName = isStaging ? null : builder.ExecutionContext.IsRunMode
     ? builder.AddParameter("azure-openai-deployment-name",
         builder.Configuration["Parameters:azure-openai-deployment-name"] ?? "gpt-4o-mini")
@@ -145,6 +149,9 @@ var managementApi = builder.AddAzureFunctionsProject<Projects.ShortenerTools_Fun
     .WithEnvironment("USE_OLLAMA", useOllama.ToString())
     .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", builder.Environment.EnvironmentName)
     .WithEnvironment("DisableExternalPosting", isStaging.ToString())
+    // Production administrators may invoke Coffee manually; timer opt-in is
+    // separate. Local/staging Coffee never sends, even with live-data opt-ins.
+    .WithEnvironment("PostSocials", coffeePostingAllowed.ToString())
     .WithEnvironment("EnableDescriptionGeneration", (!isStaging).ToString())
     .PublishAsAzureContainerApp((_, app) =>
     {
@@ -155,7 +162,8 @@ var managementApi = builder.AddAzureFunctionsProject<Projects.ShortenerTools_Fun
 string[] managementFunctions =
 [
     "UrlList", "UrlCreate", "UrlUpdate", "UrlArchive", "UrlStats",
-    "UrlClickStatsByDay", "CreateDescription", "SchedulePostHttp", "TestShortUrl"
+    "UrlClickStatsByDay", "CreateDescription", "SchedulePostHttp", "TestShortUrl",
+    "PostPublishHttp", "PostTeaserHttp", "PostAnnouncementHttp", "PostArchiveHttp"
 ];
 for (var index = 0; index < managementFunctions.Length; index++)
 {
@@ -176,8 +184,8 @@ if (chat is not null)
     }
 }
 
-// Keep the existing weekday posting schedule on a separate, non-public Functions
-// app. It is not copied into the public redirect app; enable only at cutover.
+// Keep shortener and Coffee schedules on one non-public Functions app.
+// Neither is copied into the public redirect app; opt in to each at cutover.
 var scheduledPosts = builder.AddAzureFunctionsProject<Projects.ShortenerTools_Functions>("shortenertools-scheduled-posts")
     .WithHostStorage(hostStorage)
     .WithRoleAssignments(
@@ -194,6 +202,7 @@ var scheduledPosts = builder.AddAzureFunctionsProject<Projects.ShortenerTools_Fu
     .WithEnvironment("EnableDescriptionGeneration", "false")
     .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", builder.Environment.EnvironmentName)
     .WithEnvironment("DisableExternalPosting", isStaging.ToString())
+    .WithEnvironment("PostSocials", coffeePostingAllowed.ToString())
     .WithEnvironment("AzureFunctionsWebHost__hostid", "shortener-scheduler")
     .WithEnvironment("AzureFunctionsJobHost__functions__0", "SchedulePostTimer")
     .PublishAsAzureContainerApp((infrastructure, app) =>
@@ -206,8 +215,27 @@ var scheduledPosts = builder.AddAzureFunctionsProject<Projects.ShortenerTools_Fu
             // too: Aspire publishes application modules separately from main.
             infrastructure.GetProvisionableResources().OfType<ProvisioningParameter>()
                 .Single(parameter => parameter.BicepIdentifier == "scheduler_disabled_value").Value = "true";
+            infrastructure.GetProvisionableResources().OfType<ProvisioningParameter>()
+                .Single(parameter => parameter.BicepIdentifier == "coffee_scheduler_disabled_value").Value = "true";
         }
     });
+for (var index = 0; index < coffeeTimers.Length; index++)
+{
+    scheduledPosts.WithEnvironment($"AzureFunctionsJobHost__functions__{index + 1}", coffeeTimers[index]);
+}
+foreach (var timer in coffeeTimers)
+{
+    redirect.WithEnvironment($"AzureWebJobs.{timer}.Disabled", "true");
+    managementApi.WithEnvironment($"AzureWebJobs.{timer}.Disabled", "true");
+    if (builder.ExecutionContext.IsRunMode || isStaging)
+    {
+        scheduledPosts.WithEnvironment($"AzureWebJobs.{timer}.Disabled", "true");
+    }
+    else
+    {
+        scheduledPosts.WithEnvironment($"AzureWebJobs.{timer}.Disabled", coffeeSchedulerDisabled);
+    }
+}
 if (builder.ExecutionContext.IsRunMode || isStaging)
 {
     scheduledPosts.WithEnvironment("AzureWebJobs.SchedulePostTimer.Disabled", "true");

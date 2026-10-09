@@ -14,7 +14,7 @@ namespace ShortenerTools.Tests;
 [TestClass]
 public class AdminHostingTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("/urlmanager")]
     [DataRow("/statistics")]
     [DataRow("/auth/login")]

@@ -24,7 +24,9 @@ Features:
 
 ## Local Development
 
-NuGet package versions are managed centrally in `src\Directory.Packages.props`. Existing application versions are preserved, including the scheduler's separate Application Insights versions. Update the central entries rather than adding versions to project references. Generated Azure Functions extension projects retain their SDK-managed dependencies.
+Shared build settings are defined in `src\Directory.Build.props`, and all projects use NuGet versions from `src\Directory.Packages.props`. Update the central entries rather than adding versions or version overrides to project references. The shared `AspireVersion` must match the `Aspire.AppHost.Sdk` version in the AppHost project. Generated Azure Functions extension projects retain their SDK-managed dependencies and target framework.
+
+Image resizing uses MIT-licensed SkiaSharp, including native Linux assets for Container Apps. This avoids the license-key requirement in newer ImageSharp releases and vulnerabilities in older releases. Application Insights stays on 2.x because the Functions telemetry adapter depends on its legacy API.
 
 Daily counts are available through `POST /api/UrlClickStatsByDay` with optional `Vanity`, inclusive `StartDate` and `EndDate` (`yyyy-MM-dd`), and `TimeZoneId`. The response contains `Items` (`DateClicked`, `Count`) and `Url` (empty for all links). Omitted date bounds include all dates; days without clicks are omitted. Invalid inputs return 400, and storage/data failures return 500. This read-only endpoint streams timestamp columns and aggregates on the server; it does not change stored click records or the existing `/api/UrlStats` response.
 

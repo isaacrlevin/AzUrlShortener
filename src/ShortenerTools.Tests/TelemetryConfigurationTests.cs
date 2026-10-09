@@ -21,7 +21,7 @@ public sealed class TelemetryConfigurationTests
     private static HostApplicationBuilder CreateBuilder() => Host.CreateEmptyApplicationBuilder(
         new HostApplicationBuilderSettings { EnvironmentName = Environments.Development });
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(null)]
     [DataRow("")]
     [DataRow("   ")]
@@ -35,7 +35,7 @@ public sealed class TelemetryConfigurationTests
             s.ServiceType == typeof(IConfigureOptions<AzureMonitorExporterOptions>)));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
     public void AzureMonitorUsesConfiguredConnectionAndCanCoexistWithOtlp(bool useOtlp)
@@ -66,7 +66,7 @@ public sealed class TelemetryConfigurationTests
             s.ServiceType == typeof(IConfigureOptions<AzureMonitorExporterOptions>)));
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
     public void FunctionsOnlyRegisterLegacySdkOutsideAspire(bool inAspire)

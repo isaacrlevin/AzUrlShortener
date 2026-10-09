@@ -10,7 +10,7 @@ namespace ShortenerTools.Tests;
 [TestClass]
 public class StorageDailyStatsTests
 {
-    [DataTestMethod]
+    [TestMethod]
     [DataRow(null)]
     [DataRow("")]
     [DataRow("a'b")]
