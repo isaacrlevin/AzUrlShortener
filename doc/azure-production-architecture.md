@@ -6,8 +6,9 @@ This diagram describes the **intended production deployment**, not a claim that
 the production application stack is live. As of October 8, 2026, the production
 resource group `rg-shortener-production` is in West US 2 and has no production
 apps deployed. Provisioning is an explicit Aspire deployment; the existing URL
-data account is retained. Public DNS/custom-domain and certificate binding are
-separate operator steps.
+data account is retained. Public DNS validation and initial managed certificate
+issuance are separate operator steps. Production redeployments declare the
+redirect hostname and existing managed certificate binding in the AppHost.
 
 ## Resource inventory
 

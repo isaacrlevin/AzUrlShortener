@@ -79,6 +79,8 @@ Set parameters on the deployment process through environment variables or a prot
 | Administrator object ID | `Parameters__administrator_object_id` |
 | Private API key (strong random secret) | `Parameters__admin_api_key` |
 | Short-link domain | `Parameters__custom_domain` |
+| Redirect ingress hostname (production; derived by helper) | `Parameters__redirect_domain_name` |
+| Existing ACA managed certificate name (production) | `Parameters__redirect_certificate_name` |
 | Unknown/archived-link fallback URL | `Parameters__default_redirect_url` |
 | Azure OpenAI connection for description generation | `ConnectionStrings__chat` |
 | Azure OpenAI model deployment name | `Parameters__azure_openai_deployment_name` |
@@ -86,7 +88,7 @@ Set parameters on the deployment process through environment variables or a prot
 | Coffee timers disabled state (independent default `true`; helper controls through `-EnableCoffeeScheduler`) | `Parameters__coffee_scheduler_disabled` |
 | Social/email integration secrets | `Parameters__twitter_consumer_key`, `Parameters__twitter_consumer_secret`, `Parameters__twitter_access_token`, `Parameters__twitter_access_secret`, `Parameters__mastodon_access_token`, `Parameters__linkedin_access_token`, `Parameters__bluesky_username`, `Parameters__bluesky_password`, `Parameters__threads_token`, `Parameters__communication_services_connection_string`, `Parameters__email_from`, `Parameters__email_to`, `Parameters__twitter_via_handle` |
 
-Keep your existing social/email and Azure OpenAI configuration when migrating. Description generation and scheduled posting have their own usage charges. The redirect container does not require those credentials. `custom-domain` supplies the complete short-link base URL, including the scheme and without a trailing slash (for example, `https://isaacl.dev`); `default-redirect-url` must be an absolute URL. DNS/certificate binding is a separate operator step, not performed by setting that parameter.
+Keep your existing social/email and Azure OpenAI configuration when migrating. Description generation and scheduled posting have their own usage charges. The redirect container does not require those credentials. `custom-domain` supplies the HTTPS short-link origin, without a trailing slash or path (for example, `https://isaacl.dev`); `default-redirect-url` must be an absolute URL. Initial DNS validation and managed certificate issuance are operator steps. Production redeployments declare the hostname and existing certificate in ingress so the binding is retained; see [production domain configuration](production-deployment.md#retaining-the-redirect-custom-domain-on-redeployment).
 
 ## Preview and deploy
 
@@ -161,7 +163,7 @@ Staging credentials are stored only in local AppHost user secrets under `Staging
 3. Confirm the public app enables only `UrlRedirect`, stays at one replica, and has no management routes. Confirm API ingress is internal and unauthenticated/keyless requests are rejected.
 4. Verify known, unknown, archived, and bot links and click records against the existing tables. Verify create/edit/archive, pagination, description generation, and browser-time-zone statistics.
 5. Confirm the scheduler has exactly `SchedulePostTimer`, `PostTeaserTimer`, `PostAnnouncementTimer`, and `PostArchiveTimer`, its distinct host ID and configured shared provider credentials. Disable the old shortener timer before redeploying with `enable_scheduled_posting=true` (workflow) or `-EnableScheduler` (helper). Separately disable **all three old Coffee host timers** (or stop the old Coffee host and its deployment automation) before opting in with `enable_coffee_scheduled_posting=true` or `-EnableCoffeeScheduler`. Do not use manual old/new Coffee endpoints concurrently with cutover. Distinct host IDs/storage do not deduplicate executions across old/new hosts. Without each opt-in, every helper/workflow redeploy disables that scheduler; repeat each desired switch deliberately after cutover.
-6. Bind the existing short-link custom domain to ACA ingress with domain-validation DNS records and a managed certificate. Lower DNS TTL ahead of time and switch the CNAME/A record only after checking redirects.
+6. Bind the existing short-link custom domain to ACA ingress with domain-validation DNS records and a managed certificate. Lower DNS TTL ahead of time and switch the CNAME/A record only after checking redirects. Save the managed certificate name in the production deployment inputs (`REDIRECT_CERTIFICATE_NAME` for GitHub) so subsequent deployments retain the binding.
 7. For rollback, restore the old domain target and disable the new shortener scheduler before re-enabling the old one. For Coffee rollback, redeploy without the Coffee opt-in and verify all three ACA timers are disabled and in-flight executions have completed **before** re-enabling the old Coffee host. Keep its deployable revision/configuration available until migration is proven; removal of the standalone project does not stop an already deployed host. Both shortener deployments use the same table schema; no reverse data migration is needed.
 
 ## Cost impact

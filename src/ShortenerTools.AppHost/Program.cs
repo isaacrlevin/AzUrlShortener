@@ -67,6 +67,10 @@ var customDomain = isStaging
         builder.Configuration["Parameters:custom-domain"] ?? "https://shortener.staging.invalid",
         publishValueAsDefault: true)
     : builder.AddParameter("custom-domain");
+var redirectDomainName = builder.ExecutionContext.IsRunMode || isStaging
+    ? null : builder.AddParameter("redirect-domain-name");
+var redirectCertificateName = builder.ExecutionContext.IsRunMode || isStaging
+    ? null : builder.AddParameter("redirect-certificate-name");
 var defaultRedirectUrl = isStaging
     ? builder.AddParameter("default-redirect-url",
         builder.Configuration["Parameters:default-redirect-url"] ?? "https://redirect.staging.invalid",
@@ -115,7 +119,7 @@ var redirect = builder.AddAzureFunctionsProject<Projects.ShortenerTools_Function
     .WithEnvironment("DisableExternalPosting", isStaging.ToString())
     .WithEnvironment("CustomDomain", customDomain)
     .WithEnvironment("DefaultRedirectUrl", defaultRedirectUrl)
-    .WithEnvironment("AzureWebJobs.SchedulePostTimer.Disabled", "true")
+    .WithEnvironment("AzureWebJobs.ShortPostTimer.Disabled", "true")
     .WithEnvironment("IN_ASPIRE", "true")
     .WithEnvironment("USE_OLLAMA", "false")
     .PublishAsAzureContainerApp((_, app) =>
@@ -125,6 +129,10 @@ var redirect = builder.AddAzureFunctionsProject<Projects.ShortenerTools_Function
         app.Template.Scale.MaxReplicas = 1;
         app.Template.Containers[0].Value.Resources.Cpu = 0.25;
         app.Template.Containers[0].Value.Resources.Memory = "0.5Gi";
+        if (redirectDomainName is not null && redirectCertificateName is not null)
+        {
+            app.ConfigureCustomDomain(redirectDomainName, redirectCertificateName);
+        }
     });
 if (builder.ExecutionContext.IsRunMode)
 {
@@ -144,7 +152,7 @@ var managementApi = builder.AddAzureFunctionsProject<Projects.ShortenerTools_Fun
     .WithEnvironment("CustomDomain", customDomain)
     .WithEnvironment("DefaultRedirectUrl", defaultRedirectUrl)
     .WithEnvironment("AzureFunctionsWebHost__hostid", "shortener-management")
-    .WithEnvironment("AzureWebJobs.SchedulePostTimer.Disabled", "true")
+    .WithEnvironment("AzureWebJobs.ShortPostTimer.Disabled", "true")
     .WithEnvironment("IN_ASPIRE", "true")
     .WithEnvironment("USE_OLLAMA", useOllama.ToString())
     .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", builder.Environment.EnvironmentName)
@@ -204,19 +212,19 @@ var scheduledPosts = builder.AddAzureFunctionsProject<Projects.ShortenerTools_Fu
     .WithEnvironment("DisableExternalPosting", isStaging.ToString())
     .WithEnvironment("PostSocials", coffeePostingAllowed.ToString())
     .WithEnvironment("AzureFunctionsWebHost__hostid", "shortener-scheduler")
-    .WithEnvironment("AzureFunctionsJobHost__functions__0", "SchedulePostTimer")
+    .WithEnvironment("AzureFunctionsJobHost__functions__0", "ShortPostTimer")
     .PublishAsAzureContainerApp((infrastructure, app) =>
     {
         app.Template.Scale.MinReplicas = 1;
         app.Template.Scale.MaxReplicas = 1;
         if (!isStaging)
         {
-            // Retain the safe default in the standalone Container App module,
-            // too: Aspire publishes application modules separately from main.
-            infrastructure.GetProvisionableResources().OfType<ProvisioningParameter>()
-                .Single(parameter => parameter.BicepIdentifier == "scheduler_disabled_value").Value = "true";
-            infrastructure.GetProvisionableResources().OfType<ProvisioningParameter>()
-                .Single(parameter => parameter.BicepIdentifier == "coffee_scheduler_disabled_value").Value = "true";
+            // Preserve each AppHost parameter's default while carrying explicit
+            // cutover values into the standalone scheduler module.
+            schedulerDisabled.Resource
+                .AsProvisioningParameter(infrastructure, "scheduler_disabled_value");
+            coffeeSchedulerDisabled.Resource
+                .AsProvisioningParameter(infrastructure, "coffee_scheduler_disabled_value");
         }
     });
 for (var index = 0; index < coffeeTimers.Length; index++)
@@ -238,11 +246,11 @@ foreach (var timer in coffeeTimers)
 }
 if (builder.ExecutionContext.IsRunMode || isStaging)
 {
-    scheduledPosts.WithEnvironment("AzureWebJobs.SchedulePostTimer.Disabled", "true");
+    scheduledPosts.WithEnvironment("AzureWebJobs.ShortPostTimer.Disabled", "true");
 }
 else
 {
-    scheduledPosts.WithEnvironment("AzureWebJobs.SchedulePostTimer.Disabled", schedulerDisabled);
+    scheduledPosts.WithEnvironment("AzureWebJobs.ShortPostTimer.Disabled", schedulerDisabled);
 }
 if (builder.ExecutionContext.IsRunMode)
 {

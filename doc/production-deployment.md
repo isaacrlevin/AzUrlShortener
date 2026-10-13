@@ -56,7 +56,34 @@ email integrations even while the timer is disabled. Missing inputs fail before
 publish/deploy; no deployment-time prompting or silently absent integrations.
 URLs must be HTTPS, without embedded credentials, localhost/loopback addresses,
 or reserved `.invalid` hosts.
-`CustomDomain` is the full short-link base URL, without a trailing slash.
+`CustomDomain` is the full HTTPS short-link origin, without a trailing slash,
+path, query, fragment, or custom port. The helper derives `redirect-domain-name`
+from its hostname; an inherited hostname cannot override that derived value.
+
+### Retaining the redirect custom domain on redeployment
+
+The AppHost declares the redirect ingress binding with `ConfigureCustomDomain`.
+Without this declaration, deploying its generated ingress configuration removes
+custom domains added manually in the Azure portal. DNS validation and initial
+managed certificate issuance remain operator steps; subsequent deployments reuse
+that certificate rather than requesting a new one.
+
+Supply the **managed certificate name**, not its resource ID, using
+`ProductionDeployment:RedirectCertificateName` with `-LoadUserSecrets`,
+`Parameters:redirect-certificate-name`, or
+`Parameters__redirect_certificate_name`. For GitHub deployments, set the
+production environment variable `REDIRECT_CERTIFICATE_NAME`. The current
+`www.isaacl.dev` binding uses `www.isaacl.dev-rg-short-261008231256`.
+Confirm the certificate still exists in the target ACA environment before using
+that name. The helper requires this input and fails before deployment if missing,
+rather than silently deploying an unbound production domain.
+
+For direct Aspire production commands, also supply `redirect-domain-name` as the
+bare hostname (for example, `www.isaacl.dev`), not `https://www.isaacl.dev`.
+For a first-time environment with no certificate, bootstrap through direct
+Aspire deployment with an empty certificate name, complete DNS validation and
+certificate issuance in Azure, then configure the certificate name before using
+the production helper. Staging and local runs do not use these binding inputs.
 
 ### Deployment-only AppHost user secrets / process environment
 
@@ -71,6 +98,7 @@ or reserved `.invalid` hosts.
 | `Parameters:entra-client-id` | `Parameters__entra_client_id` |
 | `Parameters:entra-client-secret` | `Parameters__entra_client_secret` |
 | `Parameters:administrator-object-id` | `Parameters__administrator_object_id` |
+| `Parameters:redirect-certificate-name` | `Parameters__redirect_certificate_name` |
 
 With `-LoadUserSecrets`, Azure target settings also fall back to
 `ProductionDeployment:SubscriptionId`, `ProductionDeployment:Location`, and
@@ -85,6 +113,7 @@ corresponding local `Parameters:*` values without changing the local secret stor
 | Production user-secret key | AppHost parameter |
 |---|---|
 | `ProductionDeployment:CustomDomain` | `custom-domain` |
+| `ProductionDeployment:RedirectCertificateName` | `redirect-certificate-name` |
 | `ProductionDeployment:DefaultRedirectUrl` | `default-redirect-url` |
 | `ProductionDeployment:ExistingStorageAccount` | `existing-storage-account` |
 | `ProductionDeployment:ExistingStorageResourceGroup` | `existing-storage-resource-group` |
@@ -163,7 +192,7 @@ into issues, logs or repository files):
 | Azure OIDC secrets | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` |
 | Application secrets | `ENTRA_CLIENT_SECRET`, `ADMIN_API_KEY`, `AZURE_OPENAI_CONNECTION_STRING` |
 | Social/email secrets | `TWITTER_CONSUMER_KEY`, `TWITTER_CONSUMER_SECRET`, `TWITTER_ACCESS_TOKEN`, `TWITTER_ACCESS_SECRET`, `MASTODON_ACCESS_TOKEN`, `LINKEDIN_ACCESS_TOKEN`, `BLUESKY_USERNAME`, `BLUESKY_PASSWORD`, `THREADS_TOKEN`, `COMMUNICATION_SERVICES_CONNECTION_STRING`, `EMAIL_FROM`, `EMAIL_TO` |
-| Variables | `AZURE_LOCATION`, `AZURE_RESOURCE_GROUP`, `EXISTING_STORAGE_ACCOUNT`, `EXISTING_STORAGE_RESOURCE_GROUP`, `ENTRA_CLIENT_ID`, `ADMINISTRATOR_OBJECT_ID`, `SHORT_LINK_DOMAIN`, `DEFAULT_REDIRECT_URL`, `TWITTER_VIA_HANDLE`, `AZURE_OPENAI_DEPLOYMENT_NAME` |
+| Variables | `AZURE_LOCATION`, `AZURE_RESOURCE_GROUP`, `EXISTING_STORAGE_ACCOUNT`, `EXISTING_STORAGE_RESOURCE_GROUP`, `ENTRA_CLIENT_ID`, `ADMINISTRATOR_OBJECT_ID`, `SHORT_LINK_DOMAIN`, `REDIRECT_CERTIFICATE_NAME`, `DEFAULT_REDIRECT_URL`, `TWITTER_VIA_HANDLE`, `AZURE_OPENAI_DEPLOYMENT_NAME` |
 
 `AZURE_CLIENT_ID` is the deployment identity, **not** `ENTRA_CLIENT_ID` (admin
 sign-in). The workflow uses `AZURE_TENANT_ID` for both tenants. Federation subject:
@@ -213,8 +242,10 @@ posting never implicitly enables Coffee.
 
 ## Scheduler cutover (separate intentional operation)
 
-The AppHost parameter `scheduler-disabled` defaults to string `true`; the
-standalone Container App Bicep parameter `scheduler_disabled_value` does too.
+The AppHost parameter `scheduler-disabled` defaults to string `true` and is
+passed through to the standalone Container App module as
+`scheduler_disabled_value`. The module has no separate hard-coded value, so an
+explicit production cutover opt-in reaches the deployed timer.
 Local runs and Staging always hard-disable the timer regardless of the parameter.
 Public redirects and management API always hard-disable their timer.
 
@@ -225,9 +256,10 @@ enabled; omitting it disables ACA scheduling. Manual administrator posting is
 still live in Production and can send real social/email messages; do not use it
 as a harmless smoke test. See the [migration cutover/rollback checklist](azure-container-apps-migration.md#production-cutover).
 
-Coffee has its own `coffee-scheduler-disabled` parameter; the existing scheduler's
-standalone Bicep module declares `coffee_scheduler_disabled_value`. Both default
-to string `true`; this is not a separate Coffee module or Container App.
+Coffee has its own `coffee-scheduler-disabled` parameter, which defaults to
+string `true` and is passed through to the existing scheduler module as
+`coffee_scheduler_disabled_value`. The two timer gates remain independent; this
+is not a separate Coffee module or Container App.
 `PostTeaserTimer` runs `0 0 17 * * MON`, `PostAnnouncementTimer` runs
 `0 0 17 * * *`, and `PostArchiveTimer` runs `0 0 16 * * MON` (UTC).
 They share the existing internal one-replica scheduled-post container and

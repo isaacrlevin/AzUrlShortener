@@ -72,6 +72,19 @@ foreach ($name in $telemetryApps.Keys) {
 }
 
 Assert-Condition ($redirect.properties.configuration.ingress.external -eq $true) 'Redirect must be public.'
+$domains = @($redirect.properties.configuration.ingress.customDomains)
+if ($DeploymentEnvironment -eq 'Production') {
+    Assert-Condition ($domains.Count -eq 1) 'Production redirect must declare its custom domain so redeploys retain the binding.'
+    Assert-Condition ($domains[0].name -eq "[parameters('redirect_domain_name')]") 'Ingress must use a hostname parameter, not the full short-link URL.'
+    Assert-Condition ($domains[0].bindingType -eq "[if(not(equals(parameters('redirect_certificate_name'), '')), 'SniEnabled', 'Disabled')]") 'Configured certificates must enable SNI binding.'
+    Assert-Condition ($domains[0].certificateId -eq "[if(not(equals(parameters('redirect_certificate_name'), '')), format('{0}/managedCertificates/{1}', parameters('aca_outputs_azure_container_apps_environment_id'), parameters('redirect_certificate_name')), null())]") 'Redirect must reuse the existing managed certificate in its ACA environment.'
+}
+else {
+    Assert-Condition (@($domains | Where-Object { $null -ne $_ }).Count -eq 0) 'Staging must not bind the production custom domain.'
+}
+foreach ($app in @($api, $admin, $scheduler)) {
+    Assert-Condition (@($app.properties.configuration.ingress.customDomains | Where-Object { $null -ne $_ }).Count -eq 0) 'The short-link custom domain must only bind to the redirect app.'
+}
 Assert-Condition ($api.properties.configuration.ingress.external -eq $false) 'Management API must be internal.'
 Assert-Condition ($scheduler.properties.configuration.ingress.external -eq $false) 'Scheduler must not be public.'
 foreach ($app in @($redirect, $scheduler)) {
@@ -97,15 +110,19 @@ Assert-Condition (@($redirectEnv | Where-Object {
 $schedulerFunctions = @($scheduler.properties.template.containers[0].env |
     Where-Object name -Like 'AzureFunctionsJobHost__functions__*')
 $coffeeTimers = @('PostTeaserTimer', 'PostAnnouncementTimer', 'PostArchiveTimer')
-$expectedTimers = @('SchedulePostTimer') + $coffeeTimers
+$shortPostTimerFunction = 'ShortPostTimer'
+$expectedTimers = @($shortPostTimerFunction) + $coffeeTimers
 Assert-Condition ($schedulerFunctions.Count -eq $expectedTimers.Count -and
     @(Compare-Object $expectedTimers @($schedulerFunctions.value)).Count -eq 0) 'Scheduler must enable exactly the shortener and Coffee timers.'
 
 $apiEnv = $api.properties.template.containers[0].env
 $schedulerEnv = $scheduler.properties.template.containers[0].env
+Assert-Condition (@($schedulerEnv | Where-Object name -EQ 'AzureFunctionsJobHost__functions__0')[0].value -eq $shortPostTimerFunction) 'Scheduler selector must match the shortener timer function name.'
+Assert-Condition (@($schedulerEnv | Where-Object name -EQ "AzureWebJobs.$shortPostTimerFunction.Disabled").Count -eq 1) 'Scheduler must disable the actual shortener timer function by its Azure Functions name.'
+Assert-Condition (@($schedulerEnv | Where-Object name -EQ 'AzureWebJobs.SchedulePostTimer.Disabled').Count -eq 0) 'Scheduler must not use the obsolete shortener timer setting name.'
 foreach ($app in @($redirect, $api)) {
     Assert-Condition (@($app.properties.template.containers[0].env |
-        Where-Object name -EQ 'AzureWebJobs.SchedulePostTimer.Disabled')[0].value -eq 'true') 'Redirect/API timers must always be disabled.'
+        Where-Object name -EQ 'AzureWebJobs.ShortPostTimer.Disabled')[0].value -eq 'true') 'Redirect/API timers must always be disabled.'
     foreach ($timer in $coffeeTimers) {
         Assert-Condition (@($app.properties.template.containers[0].env |
             Where-Object name -EQ "AzureWebJobs.$timer.Disabled")[0].value -eq 'true') "Redirect/API must disable $timer."
@@ -116,19 +133,19 @@ $null = Read-Template 'main'
 $coffeeDisabledValues = @($coffeeTimers | ForEach-Object {
     @($schedulerEnv | Where-Object name -EQ "AzureWebJobs.$_.Disabled")[0].value
 })
-$timerDisabled = @($schedulerEnv | Where-Object name -EQ 'AzureWebJobs.SchedulePostTimer.Disabled')[0].value
+$timerDisabled = @($schedulerEnv | Where-Object name -EQ "AzureWebJobs.$shortPostTimerFunction.Disabled")[0].value
 if ($DeploymentEnvironment -eq 'Production') {
     # The runtime input controls cutover, not a baked-in enabled timer.
-    Assert-Condition ($timerDisabled -match "^\[parameters\('([^']+)'\)\]$") 'Production scheduler disabled state must be a parameter.'
-    $parameterName = $Matches[1]
+    Assert-Condition ($timerDisabled -eq "[parameters('scheduler_disabled_value')]") 'Production shortener scheduler must use its dedicated deployment opt-in.'
     $schedulerTemplate = Get-Content (Join-Path $ArtifactPath 'shortenertools-scheduled-posts/shortenertools-scheduled-posts.json') -Raw | ConvertFrom-Json
-    Assert-Condition ($null -ne $schedulerTemplate.parameters.$parameterName) 'Scheduler disabled parameter must be declared.'
-    Assert-Condition ($schedulerTemplate.parameters.$parameterName.defaultValue -eq 'true') 'Production scheduler must default disabled in its deployment module.'
+    Assert-Condition ($schedulerTemplate.parameters.scheduler_disabled_value.type -eq 'string' -and
+        $null -eq $schedulerTemplate.parameters.scheduler_disabled_value.defaultValue) 'Shortener scheduler state must be supplied by the AppHost parameter, not hard-coded in its module.'
     foreach ($value in $coffeeDisabledValues) {
         Assert-Condition ($value -eq "[parameters('coffee_scheduler_disabled_value')]" -and
             $value -ne $timerDisabled) 'Coffee timers must share an independent disabled parameter, not the shortener gate.'
     }
-    Assert-Condition ($schedulerTemplate.parameters.coffee_scheduler_disabled_value.defaultValue -eq 'true') 'Coffee must default disabled in its standalone module.'
+    Assert-Condition ($schedulerTemplate.parameters.coffee_scheduler_disabled_value.type -eq 'string' -and
+        $null -eq $schedulerTemplate.parameters.coffee_scheduler_disabled_value.defaultValue) 'Coffee scheduler state must be supplied by the AppHost parameter, not hard-coded in its module.'
     foreach ($envVars in @($apiEnv, $schedulerEnv)) {
         Assert-Condition (@($envVars | Where-Object name -EQ 'PostSocials')[0].value -eq 'True') 'Production Coffee must allow opted-in timers and administrator manual posting.'
     }

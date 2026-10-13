@@ -216,6 +216,15 @@ public sealed class CoffeeSchedulerTests
     }
 
     [TestMethod]
+    public void ShortenerTimer_UsesFunctionNameExpectedByDeployment()
+    {
+        var method = typeof(SchedulePost).GetMethod(nameof(SchedulePost.ShortPostTimer))!;
+        var functionName = method.GetCustomAttribute<FunctionAttribute>()!.Name;
+
+        Assert.AreEqual("ShortPostTimer", functionName);
+    }
+
+    [TestMethod]
     public void ShortenerPost_SharedEnvelope_PreservesTextAndThreadsDestination()
     {
         var scheduler = new SchedulePost(new ShortenerSettings { CustomDomain = "https://short.example/" }, _publisher.Object);

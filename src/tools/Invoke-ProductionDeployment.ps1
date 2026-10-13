@@ -66,6 +66,7 @@ try {
         'administrator-object-id' = ''
         'admin-api-key' = 'AdminApiKey'
         'custom-domain' = 'CustomDomain'
+        'redirect-certificate-name' = ''
         'default-redirect-url' = 'DefaultRedirectUrl'
         'twitter-consumer-key' = 'TwitterConsumerKey'
         'twitter-consumer-secret' = 'TwitterConsumerSecret'
@@ -85,6 +86,7 @@ try {
     $missing = [System.Collections.Generic.List[string]]::new()
     $productionDefaults = @{
         'custom-domain' = 'CustomDomain'
+        'redirect-certificate-name' = 'RedirectCertificateName'
         'default-redirect-url' = 'DefaultRedirectUrl'
         'existing-storage-account' = 'ExistingStorageAccount'
         'existing-storage-resource-group' = 'ExistingStorageResourceGroup'
@@ -155,6 +157,16 @@ try {
             [Environment]::GetEnvironmentVariable($key).EndsWith('/')) {
             throw 'Invalid production URL setting: Parameters__custom-domain. Omit the trailing slash.'
         }
+        if ($key -eq 'Parameters__custom-domain') {
+            if ($uri.AbsolutePath -ne '/' -or $uri.Query -or $uri.Fragment -or -not $uri.IsDefaultPort) {
+                throw 'Invalid production URL setting: Parameters__custom-domain. Use only the HTTPS origin, without a path, query, fragment or custom port.'
+            }
+            Set-DeploymentEnvironment 'Parameters__redirect-domain-name' $uri.IdnHost
+            Set-DeploymentEnvironment 'Parameters__redirect_domain_name' $uri.IdnHost
+        }
+    }
+    if ([Environment]::GetEnvironmentVariable('Parameters__redirect-certificate-name') -notmatch '^[a-zA-Z0-9][a-zA-Z0-9._-]*$') {
+        throw 'Invalid Parameters__redirect-certificate-name. Supply the existing ACA managed certificate name, not its resource ID.'
     }
     # Neither local settings, inherited parameters nor cached deployment state
     # may silently opt in to scheduled posts. The switch is the cutover boundary.

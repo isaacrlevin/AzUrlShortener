@@ -86,6 +86,7 @@ jobs:
       Parameters__administrator_object_id: ${{ vars.ADMINISTRATOR_OBJECT_ID }}
       Parameters__admin_api_key: ${{ secrets.ADMIN_API_KEY }}
       Parameters__custom_domain: ${{ vars.SHORT_LINK_DOMAIN }}
+      Parameters__redirect_certificate_name: ${{ vars.REDIRECT_CERTIFICATE_NAME }}
       Parameters__default_redirect_url: ${{ vars.DEFAULT_REDIRECT_URL }}
       Parameters__twitter_consumer_key: ${{ secrets.TWITTER_CONSUMER_KEY }}
       Parameters__twitter_consumer_secret: ${{ secrets.TWITTER_CONSUMER_SECRET }}

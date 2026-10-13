@@ -31,6 +31,7 @@ function aspire {
         'Parameters__scheduler_disabled', 'Parameters__coffee-scheduler-disabled', 'Parameters__coffee_scheduler_disabled',
         'ConnectionStrings__chat', 'Parameters__twitter-consumer-key', 'Parameters__admin-api-key',
         'Parameters__custom-domain', 'Parameters__default-redirect-url',
+        'Parameters__redirect-domain-name', 'Parameters__redirect_domain_name', 'Parameters__redirect-certificate-name',
         'Parameters__existing-storage-account', 'Parameters__existing-storage-resource-group')) {
         $global:ProductionDeploymentTestState.Observed[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
     }
@@ -79,6 +80,7 @@ try {
         'ProductionDeployment:Location' = 'synthetic-region'
         'ProductionDeployment:ResourceGroup' = 'synthetic-group'
         'ProductionDeployment:CustomDomain' = 'https://production.example.com'
+        'ProductionDeployment:RedirectCertificateName' = 'production.example.com-managed'
         'ProductionDeployment:DefaultRedirectUrl' = 'https://fallback.example.com'
         'ProductionDeployment:ExistingStorageAccount' = 'productionstorage'
         'ProductionDeployment:ExistingStorageResourceGroup' = 'production-data-group'
@@ -109,6 +111,10 @@ try {
     Assert ($observed['Parameters__azure-openai-deployment-name'] -eq 'synthetic-model') 'AI deployment must map from Functions settings.'
     Assert ($observed['Parameters__admin-api-key'] -eq 'synthetic-environment-override') 'Environment must override local configuration.'
     Assert ($observed['Parameters__custom-domain'] -eq 'https://production.example.com') 'Production domain must override local Parameters.'
+    Assert ($observed['Parameters__redirect-domain-name'] -eq 'production.example.com' -and
+        $observed['Parameters__redirect_domain_name'] -eq 'production.example.com') 'Ingress hostname must be derived from the production URL in both parameter forms.'
+    Assert ($observed['Parameters__redirect-certificate-name'] -eq 'production.example.com-managed') 'Production managed certificate must be imported.'
+    Assert ([string]::IsNullOrEmpty([Environment]::GetEnvironmentVariable('Parameters__redirect-domain-name'))) 'Derived hostname must be restored.'
     Assert ($observed['Parameters__default-redirect-url'] -eq 'https://fallback.example.com') 'Production fallback must override local Parameters.'
     Assert ($observed['Parameters__existing-storage-account'] -eq 'productionstorage') 'Production storage must override local Parameters.'
     Assert ($observed['Parameters__existing-storage-resource-group'] -eq 'production-data-group') 'Production storage group must override local Parameters.'
@@ -160,6 +166,30 @@ try {
     $values.DeploymentName = 'synthetic-legacy-model'
     @{ Values = $values } | ConvertTo-Json | Set-Content $settings
     $global:ProductionDeploymentTestState.ExitCode = 0
+    $env:Parameters__redirect_certificate_name = 'environment-managed-certificate'
+    $env:Parameters__redirect_domain_name = 'incorrect.example.com'
+    $result = & $helper @options -Mode Publish
+    Assert ($global:ProductionDeploymentTestState.Observed['Parameters__redirect-certificate-name'] -eq 'environment-managed-certificate') 'Environment certificate must override user secrets.'
+    Assert ($global:ProductionDeploymentTestState.Observed['Parameters__redirect-domain-name'] -eq 'production.example.com' -and
+        $global:ProductionDeploymentTestState.Observed['Parameters__redirect_domain_name'] -eq 'production.example.com') 'Inherited hostname must not diverge from the short-link URL.'
+    Assert ($env:Parameters__redirect_domain_name -eq 'incorrect.example.com') 'Inherited hostname must be restored.'
+    $env:Parameters__redirect_domain_name = $null
+    $env:Parameters__redirect_certificate_name = '/subscriptions/synthetic/certificate'
+    Expect-Failure { & $helper @options } 'existing ACA managed certificate name'
+    $env:Parameters__redirect_certificate_name = $null
+    foreach ($url in @('https://production.example.com/path', 'https://production.example.com?query=1',
+        'https://production.example.com#fragment', 'https://production.example.com:8443')) {
+        $env:Parameters__custom_domain = $url
+        Expect-Failure { & $helper @options } 'HTTPS origin'
+    }
+    $env:Parameters__custom_domain = $null
+    $secrets.Remove('ProductionDeployment:RedirectCertificateName')
+    $secrets | ConvertTo-Json | Set-Content (Join-Path $base 'secrets.json')
+    $previousInvocationCount = $global:ProductionDeploymentTestState.Invocations.Count
+    Expect-Failure { & $helper @options -Mode Deploy } 'Parameters__redirect-certificate-name'
+    Assert ($global:ProductionDeploymentTestState.Invocations.Count -eq $previousInvocationCount) 'Missing certificate must fail before deploying.'
+    $secrets['ProductionDeployment:RedirectCertificateName'] = 'production.example.com-managed'
+    $secrets | ConvertTo-Json | Set-Content (Join-Path $base 'secrets.json')
     $env:Parameters__default_redirect_url = 'https://localhost:5001/signin-oidc'
     Expect-Failure { & $helper @options } 'non-loopback'
     Assert ([string]::IsNullOrEmpty([Environment]::GetEnvironmentVariable('Parameters__default-redirect-url'))) 'Rejected local fallback must restore environment.'
