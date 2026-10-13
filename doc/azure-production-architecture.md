@@ -17,7 +17,7 @@ redirect hostname and existing managed certificate binding in the AppHost.
 | Azure Container Apps environment (Consumption) | New | Shared hosting and ingress boundary for the four application containers |
 | `shortenertools-functions` Container App | New | Public HTTPS short-link redirects; exactly one replica, 0.25 vCPU / 0.5 GiB; only `UrlRedirect` enabled |
 | `admin` Container App | New | Public HTTPS, server-interactive Blazor administration; zero-to-one replicas; single-tenant Entra authentication |
-| `management-api` Container App | New | Internal HTTPS API for URL management, statistics, description generation, and manual posting; zero-to-one replicas |
+| `management-api` Container App | New | Public HTTPS API in Production (internal in Staging) for URL management, statistics, description generation, and manual posting; zero-to-one replicas; all routes require the server-side API key |
 | `shortenertools-scheduled-posts` Container App | New | Internal-only worker; one replica; `SchedulePostTimer` plus three Coffee timers; independently disabled by default until intentional cutovers |
 | Azure Container Registry | New | Stores the built application images used by the Container Apps |
 | Functions host storage account | New | Separate Azure Functions host state, leases, and checkpoints |
@@ -43,9 +43,10 @@ the names above use the stable Aspire logical resource names where available.
   [guest source data](https://raw.githubusercontent.com/isaacrlevin/CoffeeAndOpenSource.com/main/data/guests.json)
   and existing shared provider credentials. Coffee has its own default-disabled
   gate; shortener cutover never enables it. Local/Staging block Coffee posting.
-- The management API key also protects `PostPublishHttp` (POST JSON string guest
-  key) and `PostTeaserHttp`/`PostAnnouncementHttp`/`PostArchiveHttp` (GET).
-  Production management permits manual Coffee posting with `PostSocials=true`;
+- The management API key also protects `COSSPublishHttp` (POST JSON string guest
+  key) and `COSSTeaserHttp`/`COSSAnnouncementHttp`/`COSSArchiveHttp` (GET).
+  Production management has public HTTPS ingress for trusted external automation;
+  every management route requires `X-Admin-Api-Key`. It permits manual Coffee posting with `PostSocials=true`;
   sending also requires `ExternalPostingAllowed`. Never use these as smoke tests.
   Disable the old Coffee host timers before enabling ACA Coffee; for rollback,
   disable/drain ACA Coffee before restoring the old host. See the
@@ -75,7 +76,7 @@ graph LR
   Visitors[Short-link visitors] -->|Public HTTPS| Redirect["shortenertools-functions<br/>1 replica · UrlRedirect only"]
   AdminUser[Administrator] -->|OIDC sign-in| Entra[Microsoft Entra ID]
   Entra --> Admin["admin<br/>Public HTTPS · 0–1 replicas"]
-  Admin -->|"Internal HTTPS · service discovery<br/>server-only API key"| API["management-api<br/>Internal · 0–1 replicas"]
+  Admin -->|"HTTPS · service discovery<br/>server-only API key"| API["management-api<br/>Production public · Staging internal · 0–1 replicas"]
   API -->|"Table endpoint · managed identity"| Data[("Existing Storage<br/>UrlsDetails + ClickStats")]
   Redirect -->|"Table endpoint · managed identity"| Data
   Scheduler["shortenertools-scheduled-posts<br/>Internal only · 1 replica<br/>Shortener + Coffee independently disabled"] -->|"Table endpoint · managed identity"| Data

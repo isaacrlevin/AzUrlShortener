@@ -7,7 +7,7 @@ The `feature/azure-container-apps-migration` implementation uses the .NET Aspire
 | Service | Ingress | Scaling and functions |
 |---|---|---|
 | `shortenertools-functions` | Public HTTPS | Exactly one replica, 0.25 vCPU / 0.5 GiB; only `UrlRedirect` |
-| `management-api` | Internal HTTPS | Minimum zero, maximum one; management, statistics, description-generation and manual social-post endpoints |
+| `management-api` | Public HTTPS in Production; internal in Staging | Minimum zero, maximum one; management, statistics, description-generation and manual social-post endpoints, protected by `X-Admin-Api-Key` |
 | `admin` | Public HTTPS | Minimum zero, maximum one; server-interactive Blazor with Microsoft Entra sign-in |
 | `shortenertools-scheduled-posts` | Internal only | Exactly one replica; `SchedulePostTimer` and the three Coffee timers; independent cutover gates |
 
@@ -39,12 +39,38 @@ require their own explicit Coffee cutover**. Local/Staging set it false and
 hard-disable all Coffee timers. Staging also blocks external posting and receives
 no provider credentials.
 
-Only the internal management allowlist includes `PostPublishHttp` (POST with a
-JSON string guest key, for example `"guest-key"`), `PostTeaserHttp`,
-`PostAnnouncementHttp`, and `PostArchiveHttp` (GET). These migrated endpoints
-require the management API key, like other management calls; they are not public
-redirect routes. Production administrators can send Coffee posts manually even
+The Production management app has public HTTPS ingress so trusted automation
+can call it from outside the Container Apps environment. Every management
+function is guarded by the server-side `AdminApiKey` middleware and requires
+the `X-Admin-Api-Key` header; the key is not a Functions host key. Store it as a
+GitHub Actions secret and keep it out of URLs, logs, and request bodies. The
+public app exposes all allowlisted management routes, not only Coffee publishing.
+Staging remains internal.
+
+The management allowlist includes `COSSPublishHttp` (POST with a JSON string
+guest key, for example `"guest-key"`), `COSSTeaserHttp`,
+`COSSAnnouncementHttp`, and `COSSArchiveHttp` (GET). These migrated endpoints
+require the management API key, like other management calls. Production administrators can send Coffee posts manually even
 when its timers are disabled. Never call these endpoints as harmless smoke tests.
+Find the Production HTTPS origin with
+`az containerapp show --name management-api --resource-group <resource-group> --query properties.configuration.ingress.fqdn -o tsv`,
+then call `https://<fqdn>/api/COSSPublishHttp`.
+
+For example, a GitHub Actions step can send the guest key while keeping the API
+key in a masked secret:
+
+```yaml
+- name: Publish Coffee guest
+  env:
+    MANAGEMENT_API_URL: ${{ vars.MANAGEMENT_API_URL }}
+    ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+    GUEST_KEY: jane-doe
+  run: |
+    curl --fail-with-body --request POST "$MANAGEMENT_API_URL/api/COSSPublishHttp" \
+      --header "X-Admin-Api-Key: $ADMIN_API_KEY" \
+      --header "Content-Type: application/json" \
+      --data "\"$GUEST_KEY\""
+```
 
 ## Storage and configuration
 

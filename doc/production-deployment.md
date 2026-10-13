@@ -280,11 +280,14 @@ affect shortener posting. Omitting both disables both on redeploy.
 Local/Staging force all Coffee timers disabled and `PostSocials=false`.
 Production scheduler and management set `PostSocials=true`, so Coffee sends
 still require `ExternalPostingAllowed` and (for timers) the Coffee cutover.
-Manual Coffee endpoints are protected by the internal management API key:
-`PostPublishHttp` accepts POST with a JSON string guest key; `PostTeaserHttp`,
-`PostAnnouncementHttp`, and `PostArchiveHttp` use GET. They can send real
-production posts even when timers are disabled; public redirects still allow
-only `UrlRedirect`.
+Manual Coffee endpoints are protected by `AdminApiKey` in the
+`X-Admin-Api-Key` header: `COSSPublishHttp` accepts POST with a JSON string guest
+key; `COSSTeaserHttp`, `COSSAnnouncementHttp`, and `COSSArchiveHttp` use GET.
+Production management ingress is public, but every management route requires
+this key. These endpoints can send real production posts even when timers are
+disabled; public redirects still allow only `UrlRedirect`. See the
+[external automation example](azure-container-apps-migration.md#coffee-scheduler)
+for the HTTPS origin and a GitHub Actions call.
 
 For Coffee rollback, redeploy with Coffee opt-in omitted, verify all ACA Coffee
 timers disabled and in-flight calls drained, then restore the old Coffee host.

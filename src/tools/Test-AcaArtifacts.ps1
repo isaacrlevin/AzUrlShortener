@@ -85,7 +85,7 @@ else {
 foreach ($app in @($api, $admin, $scheduler)) {
     Assert-Condition (@($app.properties.configuration.ingress.customDomains | Where-Object { $null -ne $_ }).Count -eq 0) 'The short-link custom domain must only bind to the redirect app.'
 }
-Assert-Condition ($api.properties.configuration.ingress.external -eq $false) 'Management API must be internal.'
+Assert-Condition ($api.properties.configuration.ingress.external -eq ($DeploymentEnvironment -eq 'Production')) 'Management API must be public only in Production.'
 Assert-Condition ($scheduler.properties.configuration.ingress.external -eq $false) 'Scheduler must not be public.'
 foreach ($app in @($redirect, $scheduler)) {
     Assert-Condition ($app.properties.template.scale.minReplicas -eq 1 -and
@@ -173,7 +173,7 @@ Assert-Condition (@($apiEnv | Where-Object {
 }).Count -eq 0) 'API must not enable redirects or timer.'
 $expectedApiFunctions = @('UrlList', 'UrlCreate', 'UrlUpdate', 'UrlArchive', 'UrlStats',
     'UrlClickStatsByDay', 'CreateDescription', 'SchedulePostHttp', 'TestShortUrl',
-    'PostPublishHttp', 'PostTeaserHttp', 'PostAnnouncementHttp', 'PostArchiveHttp')
+    'COSSPublishHttp', 'COSSTeaserHttp', 'COSSAnnouncementHttp', 'COSSArchiveHttp')
 $apiFunctions = @($apiEnv | Where-Object name -Like 'AzureFunctionsJobHost__functions__*')
 Assert-Condition ($apiFunctions.Count -eq $expectedApiFunctions.Count -and
     @(Compare-Object $expectedApiFunctions @($apiFunctions.value)).Count -eq 0) 'Management must allow exactly its HTTP functions, including Coffee.'

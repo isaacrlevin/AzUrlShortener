@@ -140,7 +140,13 @@ if (builder.ExecutionContext.IsRunMode)
         productionData?.Resource.ConnectionStringExpression ?? tables.Resource.ConnectionStringExpression);
 }
 
-var managementApi = builder.AddAzureFunctionsProject<Projects.ShortenerTools_Functions>("management-api")
+var managementApiProject = builder.AddAzureFunctionsProject<Projects.ShortenerTools_Functions>("management-api");
+if (!isStaging && !builder.ExecutionContext.IsRunMode)
+{
+    managementApiProject.WithExternalHttpEndpoints();
+}
+
+var managementApi = managementApiProject
     .WithHostStorage(hostStorage)
     .WithRoleAssignments(hostStorage,
         StorageBuiltInRole.StorageBlobDataContributor,
@@ -171,7 +177,7 @@ string[] managementFunctions =
 [
     "UrlList", "UrlCreate", "UrlUpdate", "UrlArchive", "UrlStats",
     "UrlClickStatsByDay", "CreateDescription", "SchedulePostHttp", "TestShortUrl",
-    "PostPublishHttp", "PostTeaserHttp", "PostAnnouncementHttp", "PostArchiveHttp"
+    "COSSPublishHttp", "COSSTeaserHttp", "COSSAnnouncementHttp", "COSSArchiveHttp"
 ];
 for (var index = 0; index < managementFunctions.Length; index++)
 {
