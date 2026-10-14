@@ -15,7 +15,7 @@ The existing Functions assembly is reused in three independently configured cont
 
 The admin accepts only the configured Entra tenant and administrator object ID. Other Microsoft accounts do not receive the `admin` role or a sign-in cookie. The server-hosted UI preserves MudBlazor components, paging, clipboard support, and browser-local statistics dates. Its HTTP calls no longer rely on SWA routing or mock authentication.
 
-The scheduled container retains the original weekday UTC cron expression, `0 0 13,16,19,23 * * 1-5`. It stays running so the Functions timer listener remains available. The timer defaults disabled in Production until explicit cutover, is always disabled locally/in Staging, and is excluded from the public redirect and management containers. Each Functions service has a different host ID to isolate leases/checkpoints. This preserves scheduled posting, but adds another always-running container to the bill. It is deliberately not an HTTP scale-to-zero timer, which would miss executions.
+The scheduled container retains the original weekday UTC cron expression, `0 0 13,16,19,23 * * 1-5`. It stays running so the Functions timer listener remains available. The AppHost defaults the timer disabled, but every production deployment action explicitly enables and verifies all four timers after deployment. Direct helper deployments still require cutover switches. The timer is always disabled locally/in Staging and is excluded from the public redirect and management containers. Each Functions service has a different host ID to isolate leases/checkpoints. This preserves scheduled posting, but adds another always-running container to the bill. It is deliberately not an HTTP scale-to-zero timer, which would miss executions.
 
 ### Coffee scheduler
 
@@ -54,7 +54,8 @@ require the management API key, like other management calls. Production administ
 when its timers are disabled. Never call these endpoints as harmless smoke tests.
 Find the Production HTTPS origin with
 `az containerapp show --name management-api --resource-group <resource-group> --query properties.configuration.ingress.fqdn -o tsv`,
-then call `https://<fqdn>/api/COSSPublishHttp`.
+The Functions host has an empty HTTP route prefix, so call
+`https://<fqdn>/COSSPublishHttp` (no `/api` segment).
 
 For example, a GitHub Actions step can send the guest key while keeping the API
 key in a masked secret:
@@ -66,7 +67,7 @@ key in a masked secret:
     ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
     GUEST_KEY: jane-doe
   run: |
-    curl --fail-with-body --request POST "$MANAGEMENT_API_URL/api/COSSPublishHttp" \
+    curl --fail-with-body --request POST "$MANAGEMENT_API_URL/COSSPublishHttp" \
       --header "X-Admin-Api-Key: $ADMIN_API_KEY" \
       --header "Content-Type: application/json" \
       --data "\"$GUEST_KEY\""
@@ -188,7 +189,7 @@ Staging credentials are stored only in local AppHost user secrets under `Staging
 2. Register the new admin URL in Entra. Confirm only your account can access URL Manager/Statistics; confirm sign-out and rejected-account behavior.
 3. Confirm the public app enables only `UrlRedirect`, stays at one replica, and has no management routes. Confirm API ingress is internal and unauthenticated/keyless requests are rejected.
 4. Verify known, unknown, archived, and bot links and click records against the existing tables. Verify create/edit/archive, pagination, description generation, and browser-time-zone statistics.
-5. Confirm the scheduler has exactly `SchedulePostTimer`, `PostTeaserTimer`, `PostAnnouncementTimer`, and `PostArchiveTimer`, its distinct host ID and configured shared provider credentials. Disable the old shortener timer before redeploying with `enable_scheduled_posting=true` (workflow) or `-EnableScheduler` (helper). Separately disable **all three old Coffee host timers** (or stop the old Coffee host and its deployment automation) before opting in with `enable_coffee_scheduled_posting=true` or `-EnableCoffeeScheduler`. Do not use manual old/new Coffee endpoints concurrently with cutover. Distinct host IDs/storage do not deduplicate executions across old/new hosts. Without each opt-in, every helper/workflow redeploy disables that scheduler; repeat each desired switch deliberately after cutover.
+5. Confirm the scheduler has exactly `ShortPostTimer`, `PostTeaserTimer`, `PostAnnouncementTimer`, and `PostArchiveTimer`, its distinct host ID and configured shared provider credentials. Disable the old shortener timer and **all three old Coffee host timers** (or stop the old hosts and their deployment automation) before running the production action: it always enables and verifies all four replacement timers. Direct helper deployments retain independent `-EnableScheduler` and `-EnableCoffeeScheduler` switches; repeat each desired switch on those deployments. Do not use manual old/new Coffee endpoints concurrently with cutover. Distinct host IDs/storage do not deduplicate executions across old/new hosts.
 6. Bind the existing short-link custom domain to ACA ingress with domain-validation DNS records and a managed certificate. Lower DNS TTL ahead of time and switch the CNAME/A record only after checking redirects. Save the managed certificate name in the production deployment inputs (`REDIRECT_CERTIFICATE_NAME` for GitHub) so subsequent deployments retain the binding.
 7. For rollback, restore the old domain target and disable the new shortener scheduler before re-enabling the old one. For Coffee rollback, redeploy without the Coffee opt-in and verify all three ACA timers are disabled and in-flight executions have completed **before** re-enabling the old Coffee host. Keep its deployable revision/configuration available until migration is proven; removal of the standalone project does not stop an already deployed host. Both shortener deployments use the same table schema; no reverse data migration is needed.
 

@@ -13,14 +13,6 @@ on:
         options: [production]
         default: production
         required: true
-      enable_scheduled_posting:
-        description: Enable ACA timer ONLY after disabling the legacy production timer
-        type: boolean
-        default: false
-      enable_coffee_scheduled_posting:
-        description: Enable Coffee timers ONLY after disabling the old Coffee host timers
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -127,10 +119,40 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Deploy AppHost model
         shell: pwsh
-        env:
-          ENABLE_SCHEDULER: ${{ inputs.enable_scheduled_posting }}
-          ENABLE_COFFEE_SCHEDULER: ${{ inputs.enable_coffee_scheduled_posting }}
         run: |
-          $enableScheduler = $env:ENABLE_SCHEDULER -eq 'true'
-          $enableCoffeeScheduler = $env:ENABLE_COFFEE_SCHEDULER -eq 'true'
-          ./src/tools/Invoke-ProductionDeployment.ps1 -Mode Deploy -EnableScheduler:$enableScheduler -EnableCoffeeScheduler:$enableCoffeeScheduler
+          ./src/tools/Invoke-ProductionDeployment.ps1 -Mode Deploy -EnableScheduler -EnableCoffeeScheduler
+      - name: Enable and verify production timers
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $app = 'shortenertools-scheduled-posts'
+          $group = $env:Azure__ResourceGroup
+          $timers = @(
+            'ShortPostTimer'
+            'PostTeaserTimer'
+            'PostAnnouncementTimer'
+            'PostArchiveTimer'
+          )
+          $settings = $timers | ForEach-Object {
+            "AzureWebJobs.$_.Disabled=false"
+          }
+
+          # Aspire can resolve the module parameters to their disabled defaults.
+          az containerapp update --name $app --resource-group $group `
+            --set-env-vars @settings --output none
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Failed to enable production timers.'
+          }
+
+          $json = az containerapp show --name $app --resource-group $group `
+            --query 'properties.template.containers[0].env' --output json
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Failed to read production timer configuration.'
+          }
+          $environment = $json | ConvertFrom-Json
+          foreach ($timer in $timers) {
+            $setting = @($environment | Where-Object name -EQ "AzureWebJobs.$timer.Disabled")
+            if ($setting.Count -ne 1 -or $setting[0].value -ne 'false') {
+              throw "$timer is not enabled."
+            }
+          }

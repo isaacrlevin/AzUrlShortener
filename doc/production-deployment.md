@@ -229,30 +229,34 @@ feature branch must be integrated into `main` and pushed before production
 dispatch; creating this file locally does not make it available on GitHub.
 
 ```powershell
-# Intentional deployment, but ACA timer remains disabled.
+# Intentional production deployment; enables all four ACA timers.
 gh workflow run azure-container-apps.yml --repo isaacrlevin/AzUrlShortener --ref main `
-    -f environment=production -f enable_scheduled_posting=false -f enable_coffee_scheduled_posting=false
+    -f environment=production
 ```
 
 There is no automatic production deploy on push and no DNS mutation in this
-workflow. The helper clears resolved deployment cache on explicit deploy so a
-previous enabled timer cannot silently survive a later default-disabled run.
-Both workflow booleans default false and are independent; enabling shortener
-posting never implicitly enables Coffee.
+workflow. Every production action passes both scheduler enable switches, then
+explicitly sets all four timer disabled flags to `false` in Azure and reads them
+back. The action fails if the update or verification fails. This compensates for
+observed Aspire module parameter resolution deploying disabled defaults despite
+the enable switches. Legacy shortener and Coffee timers must remain disabled.
+Direct helper invocations retain independent, default-disabled cutover switches.
 
-## Scheduler cutover (separate intentional operation)
+## Scheduler cutover
 
 The AppHost parameter `scheduler-disabled` defaults to string `true` and is
 passed through to the standalone Container App module as
-`scheduler_disabled_value`. The module has no separate hard-coded value, so an
-explicit production cutover opt-in reaches the deployed timer.
+`scheduler_disabled_value`. Production Actions also enforce and verify the
+enabled settings after Aspire deploy because module parameter resolution has
+been observed to retain disabled defaults despite an explicit opt-in.
 Local runs and Staging always hard-disable the timer regardless of the parameter.
 Public redirects and management API always hard-disable their timer.
 
 Only **after disabling the legacy live Functions timer**, intentionally deploy
-with workflow `enable_scheduled_posting=true` or helper `-Mode Deploy -EnableScheduler`.
-Repeat that opt-in on subsequent deployments if the ACA timer should stay
-enabled; omitting it disables ACA scheduling. Manual administrator posting is
+with the production action or helper `-Mode Deploy -EnableScheduler`.
+The action always enables all four timers. For direct helper deployments,
+repeat the switch to request enablement; omitting it disables ACA scheduling.
+Manual administrator posting is
 still live in Production and can send real social/email messages; do not use it
 as a harmless smoke test. See the [migration cutover/rollback checklist](azure-container-apps-migration.md#production-cutover).
 
@@ -269,13 +273,14 @@ The migrated Functions assembly replaces the standalone Coffee project in the
 active solution/deployment.
 
 Disable all three timers on the old Coffee host (or stop it and its deployment
-automation) **before** setting workflow `enable_coffee_scheduled_posting=true`
-or helper `-EnableCoffeeScheduler`. Include that opt-in on every later deploy
-that should keep Coffee scheduling enabled. The helper overwrites both
+automation) **before** running the production action or helper
+`-EnableCoffeeScheduler`. The action always enables Coffee timers; direct helper
+deployments still require that switch. The helper overwrites both
 `Parameters__coffee-scheduler-disabled` and `Parameters__coffee_scheduler_disabled`
 from the switch, ignoring inherited settings and clearing deployment cache.
 `-EnableScheduler` does not affect Coffee; `-EnableCoffeeScheduler` does not
-affect shortener posting. Omitting both disables both on redeploy.
+affect shortener posting. Omitting both in a direct helper deployment disables
+both on redeploy; the production action always supplies both.
 
 Local/Staging force all Coffee timers disabled and `PostSocials=false`.
 Production scheduler and management set `PostSocials=true`, so Coffee sends
