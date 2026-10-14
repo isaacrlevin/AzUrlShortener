@@ -11,7 +11,7 @@ var isStaging = builder.Environment.IsStaging();
 var schedulerDisabled = builder.AddParameter("scheduler-disabled", "true", publishValueAsDefault: true);
 // Coffee cutover is independent of shortener posting and its legacy host.
 var coffeeSchedulerDisabled = builder.AddParameter("coffee-scheduler-disabled", "true", publishValueAsDefault: true);
-string[] coffeeTimers = ["PostTeaserTimer", "PostAnnouncementTimer", "PostArchiveTimer"];
+string[] coffeeTimers = ["COSSTeaserTimer", "COSSAnnouncementTimer", "COSSArchiveTimer"];
 var coffeePostingAllowed = !builder.ExecutionContext.IsRunMode && builder.Environment.IsProduction();
 var aiDeploymentName = isStaging ? null : builder.ExecutionContext.IsRunMode
     ? builder.AddParameter("azure-openai-deployment-name",

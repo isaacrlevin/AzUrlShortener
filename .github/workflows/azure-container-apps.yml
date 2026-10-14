@@ -129,9 +129,9 @@ jobs:
           $group = $env:Azure__ResourceGroup
           $timers = @(
             'ShortPostTimer'
-            'PostTeaserTimer'
-            'PostAnnouncementTimer'
-            'PostArchiveTimer'
+            'COSSTeaserTimer'
+            'COSSAnnouncementTimer'
+            'COSSArchiveTimer'
           )
           $settings = $timers | ForEach-Object {
             "AzureWebJobs.$_.Disabled=false"

@@ -109,7 +109,7 @@ Assert-Condition (@($redirectEnv | Where-Object {
 }).Count -eq 0) 'Redirect must not receive AI/social/email credentials.'
 $schedulerFunctions = @($scheduler.properties.template.containers[0].env |
     Where-Object name -Like 'AzureFunctionsJobHost__functions__*')
-$coffeeTimers = @('PostTeaserTimer', 'PostAnnouncementTimer', 'PostArchiveTimer')
+$coffeeTimers = @('COSSTeaserTimer', 'COSSAnnouncementTimer', 'COSSArchiveTimer')
 $shortPostTimerFunction = 'ShortPostTimer'
 $expectedTimers = @($shortPostTimerFunction) + $coffeeTimers
 Assert-Condition ($schedulerFunctions.Count -eq $expectedTimers.Count -and

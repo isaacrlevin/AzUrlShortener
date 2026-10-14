@@ -264,8 +264,8 @@ Coffee has its own `coffee-scheduler-disabled` parameter, which defaults to
 string `true` and is passed through to the existing scheduler module as
 `coffee_scheduler_disabled_value`. The two timer gates remain independent; this
 is not a separate Coffee module or Container App.
-`PostTeaserTimer` runs `0 0 17 * * MON`, `PostAnnouncementTimer` runs
-`0 0 17 * * *`, and `PostArchiveTimer` runs `0 0 16 * * MON` (UTC).
+`COSSTeaserTimer` runs `0 0 17 * * MON`, `COSSAnnouncementTimer` runs
+`0 0 17 * * *`, and `COSSArchiveTimer` runs `0 0 16 * * MON` (UTC).
 They share the existing internal one-replica scheduled-post container and
 provider credentials, not another Coffee host or new secrets. Their source is
 [`guests.json`](https://raw.githubusercontent.com/isaacrlevin/CoffeeAndOpenSource.com/main/data/guests.json).

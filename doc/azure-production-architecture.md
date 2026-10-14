@@ -38,8 +38,8 @@ the names above use the stable Aspire logical resource names where available.
   credentials.
 - Coffee lives in the shared Functions assembly, replacing the standalone
   Coffee project in the active deployment. The internal scheduler allowlists
-  `PostTeaserTimer` (Monday 17:00 UTC), `PostAnnouncementTimer` (daily 17:00 UTC),
-  and `PostArchiveTimer` (Monday 16:00 UTC), using
+  `COSSTeaserTimer` (Monday 17:00 UTC), `COSSAnnouncementTimer` (daily 17:00 UTC),
+  and `COSSArchiveTimer` (Monday 16:00 UTC), using
   [guest source data](https://raw.githubusercontent.com/isaacrlevin/CoffeeAndOpenSource.com/main/data/guests.json)
   and existing shared provider credentials. Coffee has its own default-disabled
   gate; shortener cutover never enables it. Local/Staging block Coffee posting.

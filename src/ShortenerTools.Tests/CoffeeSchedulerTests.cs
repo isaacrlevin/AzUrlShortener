@@ -225,6 +225,35 @@ public sealed class CoffeeSchedulerTests
     }
 
     [TestMethod]
+    public void DeploymentTimerNames_MatchDeclaredFunctions()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "src", "shortenerTools.sln")))
+        {
+            root = root.Parent;
+        }
+        Assert.IsNotNull(root, "Repository root must be available for deployment configuration checks.");
+
+        var appHost = File.ReadAllText(Path.Combine(root.FullName, "src", "ShortenerTools.AppHost", "Program.cs"));
+        var coffeeTimerList = System.Text.RegularExpressions.Regex.Match(appHost,
+            @"string\[\] coffeeTimers = \[(.*?)\];").Groups[1].Value;
+        var configuredNames = System.Text.RegularExpressions.Regex.Matches(coffeeTimerList, "\"([^\"]+)\"")
+            .Select(match => match.Groups[1].Value).ToArray();
+        var declaredNames = typeof(CoffeeOpenSource).GetMethods()
+            .Where(method => method.GetParameters().Any(parameter =>
+                parameter.GetCustomAttribute<TimerTriggerAttribute>() is not null))
+            .Select(method => method.GetCustomAttribute<FunctionAttribute>()!.Name).ToArray();
+        CollectionAssert.AreEquivalent(declaredNames, configuredNames);
+
+        var workflow = File.ReadAllText(Path.Combine(root.FullName, ".github", "workflows", "azure-container-apps.yml"));
+        var verificationTimers = System.Text.RegularExpressions.Regex.Match(workflow,
+            @"\$timers = @\((.*?)\)", System.Text.RegularExpressions.RegexOptions.Singleline).Groups[1].Value;
+        var verifiedNames = System.Text.RegularExpressions.Regex.Matches(verificationTimers, "'([^']+)'")
+            .Select(match => match.Groups[1].Value).ToArray();
+        CollectionAssert.AreEquivalent(declaredNames.Append("ShortPostTimer").ToArray(), verifiedNames);
+    }
+
+    [TestMethod]
     public void ShortenerPost_SharedEnvelope_PreservesTextAndThreadsDestination()
     {
         var scheduler = new SchedulePost(new ShortenerSettings { CustomDomain = "https://short.example/" }, _publisher.Object);

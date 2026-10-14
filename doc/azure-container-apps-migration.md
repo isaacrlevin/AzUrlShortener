@@ -26,9 +26,9 @@ The existing one-replica scheduler also allowlists these legacy function names:
 
 | Function | UTC cron | Purpose |
 |---|---|---|
-| `PostTeaserTimer` | `0 0 17 * * MON` | Monday teaser |
-| `PostAnnouncementTimer` | `0 0 17 * * *` | Daily announcement |
-| `PostArchiveTimer` | `0 0 16 * * MON` | Monday archive |
+| `COSSTeaserTimer` | `0 0 17 * * MON` | Monday teaser |
+| `COSSAnnouncementTimer` | `0 0 17 * * *` | Daily announcement |
+| `COSSArchiveTimer` | `0 0 16 * * MON` | Monday archive |
 
 Guest data comes from
 [`guests.json`](https://raw.githubusercontent.com/isaacrlevin/CoffeeAndOpenSource.com/main/data/guests.json).
@@ -189,7 +189,7 @@ Staging credentials are stored only in local AppHost user secrets under `Staging
 2. Register the new admin URL in Entra. Confirm only your account can access URL Manager/Statistics; confirm sign-out and rejected-account behavior.
 3. Confirm the public app enables only `UrlRedirect`, stays at one replica, and has no management routes. Confirm API ingress is internal and unauthenticated/keyless requests are rejected.
 4. Verify known, unknown, archived, and bot links and click records against the existing tables. Verify create/edit/archive, pagination, description generation, and browser-time-zone statistics.
-5. Confirm the scheduler has exactly `ShortPostTimer`, `PostTeaserTimer`, `PostAnnouncementTimer`, and `PostArchiveTimer`, its distinct host ID and configured shared provider credentials. Disable the old shortener timer and **all three old Coffee host timers** (or stop the old hosts and their deployment automation) before running the production action: it always enables and verifies all four replacement timers. Direct helper deployments retain independent `-EnableScheduler` and `-EnableCoffeeScheduler` switches; repeat each desired switch on those deployments. Do not use manual old/new Coffee endpoints concurrently with cutover. Distinct host IDs/storage do not deduplicate executions across old/new hosts.
+5. Confirm the scheduler has exactly `ShortPostTimer`, `COSSTeaserTimer`, `COSSAnnouncementTimer`, and `COSSArchiveTimer`, its distinct host ID and configured shared provider credentials. Disable the old shortener timer and **all three old Coffee host timers** (or stop the old hosts and their deployment automation) before running the production action: it always enables and verifies all four replacement timers. Direct helper deployments retain independent `-EnableScheduler` and `-EnableCoffeeScheduler` switches; repeat each desired switch on those deployments. Do not use manual old/new Coffee endpoints concurrently with cutover. Distinct host IDs/storage do not deduplicate executions across old/new hosts.
 6. Bind the existing short-link custom domain to ACA ingress with domain-validation DNS records and a managed certificate. Lower DNS TTL ahead of time and switch the CNAME/A record only after checking redirects. Save the managed certificate name in the production deployment inputs (`REDIRECT_CERTIFICATE_NAME` for GitHub) so subsequent deployments retain the binding.
 7. For rollback, restore the old domain target and disable the new shortener scheduler before re-enabling the old one. For Coffee rollback, redeploy without the Coffee opt-in and verify all three ACA timers are disabled and in-flight executions have completed **before** re-enabling the old Coffee host. Keep its deployable revision/configuration available until migration is proven; removal of the standalone project does not stop an already deployed host. Both shortener deployments use the same table schema; no reverse data migration is needed.
 
