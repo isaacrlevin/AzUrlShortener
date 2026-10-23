@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Azure deployment architecture for LevinUrlShortener</title>
+  <desc id="desc">Repository-documented architecture for the levin-url-shortener Azure Functions app. Visitors and administrators use HTTP functions for redirects and link creation. Azure Table Storage stores short links, an Azure Storage queue buffers redirect analytics for processing into Cosmos DB, and Application Insights receives telemetry. GitHub Actions deploys the Function App. A Logic App timer is described in the README as calling the TweetScheduler function; the function's social-posting calls are currently disabled. Hosting plan, region, resource names, and custom-domain bindings are not defined in this repository.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#081321"/>
+      <stop offset="1" stop-color="#101e31"/>
+    </linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#102d43"/>
+      <stop offset="1" stop-color="#14283a"/>
+    </linearGradient>
+    <linearGradient id="azure" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10263a"/>
+      <stop offset="1" stop-color="#0c1c2c"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000814" flood-opacity=".3"/>
+    </filter>
+    <marker id="arrow-cyan" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#44d6df"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#60a5fa"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#c4a2ff"/>
+    </marker>
+    <marker id="arrow-amber" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#f6bd60"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", Arial, sans-serif; fill: #edf4fb; }
+      .eyebrow { font-size: 14px; font-weight: 700; letter-spacing: 2px; fill: #8ca5ba; }
+      .title { font-size: 39px; font-weight: 700; letter-spacing: -.6px; }
+      .subtitle { font-size: 18px; fill: #a9bdcf; }
+      .section { font-size: 15px; font-weight: 700; letter-spacing: 1.5px; fill: #96aec2; }
+      .card-title { font-size: 18px; font-weight: 700; }
+      .card-sub { font-size: 13px; fill: #a9bdcf; }
+      .detail { font-size: 13px; fill: #d1deea; }
+      .small { font-size: 12px; fill: #a9bdcf; }
+      .tiny { font-size: 11px; fill: #a9bdcf; }
+      .tag { font-size: 11px; font-weight: 700; letter-spacing: .8px; }
+      .line-label { font-size: 11px; font-weight: 600; paint-order: stroke; stroke: #0b1827; stroke-width: 6px; stroke-linejoin: round; }
+      .resource { fill: #10243a; stroke: #29445e; stroke-width: 1.5; }
+      .new { fill: #10253a; stroke: #317c96; stroke-width: 1.5; }
+      .muted { fill: #14253a; stroke: #77869a; stroke-width: 1.5; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <circle cx="1660" cy="70" r="220" fill="#1a5263" opacity=".08"/>
+  <circle cx="1800" cy="170" r="120" fill="#315088" opacity=".08"/>
+
+  <text x="64" y="52" class="eyebrow">LEVINURLSHORTENER  /  AZURE DEPLOYMENT</text>
+  <text x="64" y="104" class="title">URL shortener on Azure Functions</text>
+  <text x="64" y="137" class="subtitle">HTTP redirects and link management, with queued analytics and a GitHub Actions deployment path.</text>
+
+  <g transform="translate(1395 40)">
+    <rect width="461" height="43" rx="21" fill="#35271d" stroke="#a66e37"/>
+    <circle cx="22" cy="21.5" r="5" fill="#f6bd60"/>
+    <text x="39" y="26" class="tag" fill="#f9d99e">REPO-DOCUMENTED · HOSTING DETAILS UNSPECIFIED</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="64" y="168" width="495" height="126" rx="16" fill="url(#hero)" stroke="#29445e"/>
+    <rect x="580" y="168" width="495" height="126" rx="16" fill="url(#hero)" stroke="#29445e"/>
+    <rect x="1096" y="168" width="760" height="126" rx="16" fill="url(#hero)" stroke="#29445e"/>
+  </g>
+
+  <text x="86" y="194" class="section">USERS &amp; HTTP TRAFFIC</text>
+  <circle cx="101" cy="235" r="17" fill="#143852" stroke="#44d6df"/>
+  <path d="M94 240c1-7 13-7 14 0m-7-12a4 4 0 1 0 0-8 4 4 0 0 0 0 8" fill="none" stroke="#7ce9ed" stroke-width="2"/>
+  <text x="130" y="232" class="card-title">Short-link visitors</text>
+  <text x="130" y="253" class="card-sub">GET /UrlRedirect/{shortUrl} · redirect response</text>
+  <circle cx="101" cy="274" r="11" fill="#143852" stroke="#44d6df"/>
+  <path d="M96 276h10m-8-4l-3 4 3 4m6-8l3 4-3 4" fill="none" stroke="#7ce9ed" stroke-width="1.5"/>
+  <text x="130" y="279" class="small">Administrators · Utility page + ShortenUrl API</text>
+
+  <text x="602" y="194" class="section">BUILD &amp; DEPLOY</text>
+  <circle cx="623" cy="239" r="18" fill="#202d43" stroke="#60a5fa"/>
+  <path d="M623 226v25m-9-16c5 0 6-4 9-7s4-2 8-2m-17 15c5 0 6 4 9 7s4 2 8 2" fill="none" stroke="#a9d0ff" stroke-width="1.7"/>
+  <text x="652" y="235" class="card-title">GitHub Actions</text>
+  <text x="652" y="256" class="card-sub">Push to main or manual workflow dispatch</text>
+  <text x="602" y="280" class="tiny">.NET 6 build / publish · Azure Functions deploy action</text>
+
+  <text x="1118" y="194" class="section">SCHEDULED AUTOMATION · DOCUMENTED IN README</text>
+  <circle cx="1141" cy="240" r="17" fill="#3c3223" stroke="#f6bd60"/>
+  <circle cx="1141" cy="240" r="9" fill="none" stroke="#f6bd60" stroke-width="1.5"/>
+  <path d="M1141 234v6l5 3" fill="none" stroke="#f6bd60" stroke-width="1.5"/>
+  <text x="1170" y="235" class="card-title">Timer-based Logic App</text>
+  <text x="1170" y="256" class="card-sub">Calls the function-authenticated TweetScheduler endpoint</text>
+  <text x="1118" y="280" class="tiny">Social posting calls are currently commented out in the Function App code.</text>
+
+  <rect x="48" y="324" width="1824" height="622" rx="23" fill="url(#azure)" stroke="#28617a" stroke-width="2"/>
+  <rect x="72" y="309" width="719" height="35" rx="17" fill="#0d2031"/>
+  <text x="88" y="332" class="section" fill="#71d9df">AZURE · FUNCTION APP: levin-url-shortener</text>
+  <text x="1490" y="332" class="tiny">Region · hosting plan · resource group not specified in repo</text>
+
+  <g fill="none" stroke-linecap="round">
+    <path d="M260 294V380H450V420" stroke="#44d6df" stroke-width="2.5" marker-end="url(#arrow-cyan)"/>
+    <path d="M830 294V367H560V420" stroke="#60a5fa" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+    <path d="M1450 294V385H735V420" stroke="#f6bd60" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#arrow-amber)"/>
+    <path d="M828 515H905" stroke="#44d6df" stroke-width="2.2" marker-end="url(#arrow-cyan)"/>
+    <path d="M905 543H828" stroke="#44d6df" stroke-width="2.2" marker-end="url(#arrow-cyan)"/>
+    <path d="M828 668H905" stroke="#60a5fa" stroke-width="2.2" marker-end="url(#arrow-blue)"/>
+    <path d="M905 697H828" stroke="#60a5fa" stroke-width="2.2" marker-end="url(#arrow-blue)"/>
+    <path d="M828 790H1350V510H1380" stroke="#c4a2ff" stroke-width="2.3" marker-end="url(#arrow-purple)"/>
+    <path d="M828 820H1330V735H1380" stroke="#f6bd60" stroke-width="2.2" marker-end="url(#arrow-amber)"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="88" y="420" width="740" height="460" rx="16" class="new"/>
+    <rect x="905" y="420" width="415" height="440" rx="16" class="resource"/>
+    <rect x="1380" y="420" width="440" height="205" rx="16" class="resource"/>
+    <rect x="1380" y="660" width="440" height="155" rx="16" class="resource"/>
+  </g>
+
+  <text x="116" y="456" class="section" fill="#71d9df">AZURE FUNCTIONS · .NET 6 / FUNCTIONS V4</text>
+  <text x="116" y="487" class="card-title">levin-url-shortener</text>
+  <text x="116" y="510" class="card-sub">Single Function App; hosting SKU and scale settings are not declared here.</text>
+
+  <rect x="116" y="534" width="684" height="144" rx="11" fill="#142b40" stroke="#345570"/>
+  <text x="136" y="561" class="tag" fill="#7ce9ed">HTTP FUNCTIONS</text>
+  <text x="136" y="587" class="detail">UrlRedirect · anonymous GET/POST → look up code, enqueue analytics, return redirect</text>
+  <text x="136" y="610" class="detail">ShortenUrl · function-key POST → create short code and save URL</text>
+  <text x="136" y="633" class="detail">Utility / HomeRedirect · serve admin page / redirect home</text>
+  <text x="136" y="656" class="detail">UpdateTwitter · function-key POST → reads Cosmos document; sets referralTweet in handler</text>
+
+  <rect x="116" y="697" width="684" height="139" rx="11" fill="#142b40" stroke="#345570"/>
+  <text x="136" y="724" class="tag" fill="#a9d0ff">BACKGROUND &amp; SCHEDULED FUNCTIONS</text>
+  <text x="136" y="751" class="detail">ProcessQueue · consumes requests and writes analytics to Cosmos DB</text>
+  <text x="136" y="774" class="detail">KeepAlive · timer trigger every 4 minutes</text>
+  <text x="136" y="797" class="detail">TweetScheduler · function-key HTTP trigger; checks link and posted state</text>
+  <text x="136" y="820" class="tiny">Tweet / Mastodon / Bluesky publishing routines are not currently invoked.</text>
+
+  <text x="933" y="456" class="section">AZURE STORAGE ACCOUNT</text>
+  <text x="933" y="481" class="card-sub">Connection: AzureWebJobsStorage · account name not in repo</text>
+  <rect x="933" y="500" width="359" height="102" rx="11" fill="#142b40" stroke="#345570"/>
+  <circle cx="958" cy="531" r="11" fill="#143852" stroke="#44d6df"/>
+  <path d="M951 528h14v11h-14zM954 525h8v3" fill="none" stroke="#7ce9ed" stroke-width="1.4"/>
+  <text x="982" y="531" class="card-title" font-size="16">Table: urls</text>
+  <text x="952" y="560" class="small">Short URL → destination, title, message, posted state</text>
+  <text x="952" y="582" class="small">Key record seeds short-code generation</text>
+  <rect x="933" y="626" width="359" height="102" rx="11" fill="#142b40" stroke="#345570"/>
+  <circle cx="958" cy="657" r="11" fill="#202d43" stroke="#60a5fa"/>
+  <path d="M952 653h12v8h-12zm2-3h8m-8 14h8" fill="none" stroke="#a9d0ff" stroke-width="1.4"/>
+  <text x="982" y="657" class="card-title" font-size="16">Queue: requests</text>
+  <text x="952" y="686" class="small">Redirect event payloads buffer for processing</text>
+  <text x="952" y="708" class="small">Queue trigger runs ProcessQueue</text>
+  <rect x="933" y="752" width="359" height="74" rx="11" fill="#101e31" stroke="#29445e"/>
+  <text x="952" y="780" class="tag" fill="#a9bdcf">FUNCTION HOST STORAGE</text>
+  <text x="952" y="804" class="small">The same setting also backs Functions host state.</text>
+
+  <text x="1408" y="456" class="section">AZURE COSMOS DB</text>
+  <text x="1408" y="481" class="card-sub">Binding connection: CosmosDb</text>
+  <rect x="1408" y="500" width="384" height="99" rx="11" fill="#142b40" stroke="#345570"/>
+  <circle cx="1435" cy="531" r="13" fill="#282047" stroke="#c4a2ff"/>
+  <ellipse cx="1435" cy="527" rx="7" ry="3" fill="none" stroke="#d8c5ff" stroke-width="1.3"/>
+  <path d="M1428 527v9c0 4 14 4 14 0v-9m-14 4c0 4 14 4 14 0" fill="none" stroke="#d8c5ff" stroke-width="1.3"/>
+  <text x="1460" y="531" class="card-title" font-size="16">url-tracking / url-stats</text>
+  <text x="1428" y="561" class="small">ProcessQueue writes redirect analytics documents</text>
+  <text x="1428" y="583" class="small">UpdateTwitter reads a document by id</text>
+
+  <text x="1408" y="696" class="section">APPLICATION INSIGHTS</text>
+  <text x="1408" y="722" class="card-sub">SDK telemetry · Azure resource name not in repo</text>
+  <text x="1408" y="751" class="small">Page views, custom events, dependencies, and function logs</text>
+  <text x="1408" y="775" class="small">Configured through the Function App environment</text>
+  <text x="1408" y="798" class="tiny">Instrumentation is present; resource provisioning is not shown.</text>
+
+  <rect x="76" y="902" width="1768" height="25" rx="12" fill="#0d2031"/>
+  <circle cx="98" cy="914.5" r="4" fill="#44d6df"/>
+  <text x="111" y="919" class="tiny">Solid connectors: code/config-backed application flows</text>
+  <path d="M475 914h38" stroke="#f6bd60" stroke-width="2" stroke-dasharray="6 5"/>
+  <text x="523" y="919" class="tiny">Dashed connector: README-described Logic App invocation</text>
+  <text x="1840" y="1030" class="tiny" text-anchor="end">Source: repository code, workflow configuration, and README · no infrastructure-as-code found</text>
+</svg>

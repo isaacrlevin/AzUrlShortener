@@ -154,6 +154,13 @@ PublishScripts/
 
 # NuGet Packages
 *.nupkg
+!vendor/nuget/SocialPoster.Components.1.0.2-shortener.2.nupkg
+!vendor/nuget/SocialPoster.Components.1.0.2-shortener.3.nupkg
+!vendor/nuget/SocialPoster.Components.1.0.2-shortener.4.nupkg
+!vendor/nuget/SocialPoster.Components.1.0.2-shortener.5.nupkg
+!vendor/nuget/SocialPoster.Core.1.0.2-shortener.2.nupkg
+!vendor/nuget/SocialPoster.Posting.1.0.3.nupkg
+.tmp-socialposter-original/
 # The packages folder can be ignored because of Package Restore
 **/packages/*
 # except build/, which is used as an MSBuild target.
@@ -264,6 +271,7 @@ __pycache__/
 #Admin tools Development Settings
 
 **/appsettings.[Dd]evelopment.json
+src/ShortenerTools.Admin/socialposter-data/
 
 
 src/adminTools/adminBlazorWebsite/appsettings.Development.json

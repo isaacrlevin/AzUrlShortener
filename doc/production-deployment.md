@@ -87,18 +87,18 @@ the production helper. Staging and local runs do not use these binding inputs.
 
 ### Deployment-only AppHost user secrets / process environment
 
-| User-secret key | Portable process environment |
-|---|---|
-| `Azure:SubscriptionId` | `Azure__SubscriptionId` |
-| `Azure:Location` | `Azure__Location` |
-| `Azure:ResourceGroup` | `Azure__ResourceGroup` |
-| `Parameters:existing-storage-account` | `Parameters__existing_storage_account` |
+| User-secret key                              | Portable process environment                  |
+|----------------------------------------------|-----------------------------------------------|
+| `Azure:SubscriptionId`                       | `Azure__SubscriptionId`                       |
+| `Azure:Location`                             | `Azure__Location`                             |
+| `Azure:ResourceGroup`                        | `Azure__ResourceGroup`                        |
+| `Parameters:existing-storage-account`        | `Parameters__existing_storage_account`        |
 | `Parameters:existing-storage-resource-group` | `Parameters__existing_storage_resource_group` |
-| `Parameters:entra-tenant-id` | `Parameters__entra_tenant_id` |
-| `Parameters:entra-client-id` | `Parameters__entra_client_id` |
-| `Parameters:entra-client-secret` | `Parameters__entra_client_secret` |
-| `Parameters:administrator-object-id` | `Parameters__administrator_object_id` |
-| `Parameters:redirect-certificate-name` | `Parameters__redirect_certificate_name` |
+| `Parameters:entra-tenant-id`                 | `Parameters__entra_tenant_id`                 |
+| `Parameters:entra-client-id`                 | `Parameters__entra_client_id`                 |
+| `Parameters:entra-client-secret`             | `Parameters__entra_client_secret`             |
+| `Parameters:administrator-object-id`         | `Parameters__administrator_object_id`         |
+| `Parameters:redirect-certificate-name`       | `Parameters__redirect_certificate_name`       |
 
 With `-LoadUserSecrets`, Azure target settings also fall back to
 `ProductionDeployment:SubscriptionId`, `ProductionDeployment:Location`, and
@@ -110,12 +110,12 @@ local deployment still needs intentional Azure authentication.
 For safe production-specific defaults, these user secrets override the
 corresponding local `Parameters:*` values without changing the local secret store:
 
-| Production user-secret key | AppHost parameter |
-|---|---|
-| `ProductionDeployment:CustomDomain` | `custom-domain` |
-| `ProductionDeployment:RedirectCertificateName` | `redirect-certificate-name` |
-| `ProductionDeployment:DefaultRedirectUrl` | `default-redirect-url` |
-| `ProductionDeployment:ExistingStorageAccount` | `existing-storage-account` |
+| Production user-secret key                          | AppHost parameter                 |
+|-----------------------------------------------------|-----------------------------------|
+| `ProductionDeployment:CustomDomain`                 | `custom-domain`                   |
+| `ProductionDeployment:RedirectCertificateName`      | `redirect-certificate-name`       |
+| `ProductionDeployment:DefaultRedirectUrl`           | `default-redirect-url`            |
+| `ProductionDeployment:ExistingStorageAccount`       | `existing-storage-account`        |
 | `ProductionDeployment:ExistingStorageResourceGroup` | `existing-storage-resource-group` |
 
 In particular, a local sign-in callback URL is not a production redirect fallback.
@@ -133,30 +133,27 @@ identity rather than copying a local storage connection string.
 Each destination also accepts the equivalent AppHost user-secret key
 `Parameters:<parameter>` and environment `Parameters__<parameter_with_underscores>`.
 
-| Functions Values key | AppHost parameter |
-|---|---|
-| `AdminApiKey` | `admin-api-key` |
-| `CustomDomain` | `custom-domain` |
-| `DefaultRedirectUrl` | `default-redirect-url` |
-| `TwitterConsumerKey` | `twitter-consumer-key` |
-| `TwitterConsumerSecret` | `twitter-consumer-secret` |
-| `TwitterAccessToken` | `twitter-access-token` |
-| `TwitterAccessSecret` | `twitter-access-secret` |
-| `TwitterViaHandle` | `twitter-via-handle` |
-| `MastodonAccessToken` | `mastodon-access-token` |
-| `LinkedInAccessToken` | `linkedin-access-token` |
-| `BlueskyUserName` | `bluesky-username` |
-| `BlueskyPassword` | `bluesky-password` |
-| `ThreadsToken` | `threads-token` |
-| `COMMUNICATION_SERVICES_CONNECTION_STRING` | `communication-services-connection-string` |
-| `EmailFrom` | `email-from` |
-| `EmailTo` | `email-to` |
-| `AzureOpenAIDeploymentName` (fallback: `DeploymentName`) | `azure-openai-deployment-name` |
-| `AzureOpenAIEndpoint` + `AzureOpenAIKey` | Builds `ConnectionStrings:chat` using `Endpoint=…;Key=…` |
+| Functions Values key                                     | AppHost parameter                                        |
+|----------------------------------------------------------|----------------------------------------------------------|
+| `AdminApiKey`                                            | `admin-api-key`                                          |
+| `CustomDomain`                                           | `custom-domain`                                          |
+| `DefaultRedirectUrl`                                     | `default-redirect-url`                                   |
+| `TwitterViaHandle`                                       | `twitter-via-handle`                                     |
+| Azure App Configuration read/write connection string     | `social-accounts-connection-string`                      |
+| Azure App Configuration read-only connection string      | `social-accounts-readonly-connection-string`             |
+| `ThreadsToken`                                           | `threads-token`                                          |
+| `COMMUNICATION_SERVICES_CONNECTION_STRING`               | `communication-services-connection-string`               |
+| `EmailFrom`                                              | `email-from`                                             |
+| `EmailTo`                                                | `email-to`                                               |
+| `AzureOpenAIDeploymentName` (fallback: `DeploymentName`) | `azure-openai-deployment-name`                           |
+| `AzureOpenAIEndpoint` + `AzureOpenAIKey`                 | Builds `ConnectionStrings:chat` using `Endpoint=…;Key=…` |
 
 An existing chat connection takes precedence over endpoint/key construction:
 `ConnectionStrings__chat` environment, then AppHost `ConnectionStrings:chat`
 user secret, then Functions `Values["ConnectionStrings:chat"]`.
+The Admin receives the `social-accounts-connection-string` parameter with read/write access. Functions receive only
+`social-accounts-readonly-connection-string`. SocialPoster writes the four provider credentials to Azure App
+Configuration and the Functions refresh those settings through its sentinel key.
 The management API receives only the secret-reference `ConnectionStrings__chat`
 and the explicit `DeploymentName`. Production never relies on the legacy
 `gpt-4o-mini` default. Prompt, page and response content telemetry is disabled in
@@ -187,12 +184,13 @@ Create/configure `production` with deployment branch `main`; no required
 reviewers/approval are requested. Store the following inputs (never paste values
 into issues, logs or repository files):
 
-| Kind | Names |
-|---|---|
-| Azure OIDC secrets | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` |
-| Application secrets | `ENTRA_CLIENT_SECRET`, `ADMIN_API_KEY`, `AZURE_OPENAI_CONNECTION_STRING` |
-| Social/email secrets | `TWITTER_CONSUMER_KEY`, `TWITTER_CONSUMER_SECRET`, `TWITTER_ACCESS_TOKEN`, `TWITTER_ACCESS_SECRET`, `MASTODON_ACCESS_TOKEN`, `LINKEDIN_ACCESS_TOKEN`, `BLUESKY_USERNAME`, `BLUESKY_PASSWORD`, `THREADS_TOKEN`, `COMMUNICATION_SERVICES_CONNECTION_STRING`, `EMAIL_FROM`, `EMAIL_TO` |
-| Variables | `AZURE_LOCATION`, `AZURE_RESOURCE_GROUP`, `EXISTING_STORAGE_ACCOUNT`, `EXISTING_STORAGE_RESOURCE_GROUP`, `ENTRA_CLIENT_ID`, `ADMINISTRATOR_OBJECT_ID`, `SHORT_LINK_DOMAIN`, `REDIRECT_CERTIFICATE_NAME`, `DEFAULT_REDIRECT_URL`, `TWITTER_VIA_HANDLE`, `AZURE_OPENAI_DEPLOYMENT_NAME` |
+| Kind                         | Names                                                                                                                                                                                                                                                                                 |
+|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Azure OIDC secrets           | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`                                                                                                                                                                                                                         |
+| Application secrets          | `ENTRA_CLIENT_SECRET`, `ADMIN_API_KEY`, `AZURE_OPENAI_CONNECTION_STRING`                                                                                                                                                                                                              |
+| Social account configuration | `SOCIAL_ACCOUNTS_CONFIG_READWRITE_CONNECTION_STRING`, `SOCIAL_ACCOUNTS_CONFIG_READONLY_CONNECTION_STRING`                                                                                                                                                                             |
+| Other integration secrets    | `THREADS_TOKEN`, `COMMUNICATION_SERVICES_CONNECTION_STRING`, `EMAIL_FROM`, `EMAIL_TO`                                                                                                                                                                                                 |
+| Variables                    | `AZURE_LOCATION`, `AZURE_RESOURCE_GROUP`, `EXISTING_STORAGE_ACCOUNT`, `EXISTING_STORAGE_RESOURCE_GROUP`, `ENTRA_CLIENT_ID`, `ADMINISTRATOR_OBJECT_ID`, `SHORT_LINK_DOMAIN`, `REDIRECT_CERTIFICATE_NAME`, `DEFAULT_REDIRECT_URL`, `TWITTER_VIA_HANDLE`, `AZURE_OPENAI_DEPLOYMENT_NAME` |
 
 `AZURE_CLIENT_ID` is the deployment identity, **not** `ENTRA_CLIENT_ID` (admin
 sign-in). The workflow uses `AZURE_TENANT_ID` for both tenants. Federation subject:
@@ -223,8 +221,8 @@ Secrets may be loaded by an operator with `gh secret set NAME --env production -
 using stdin from a secret manager, rather than `--body`/command-line literals.
 
 The workflow validates builds/tests and Production/Staging Bicep on PR/push to `main`.
-Deploy is manual, serialized, scoped to environment `production`, and allowed
-**only on `main`**. Branch dispatches validate but skip deployment. The current
+Deploy is manual, serialized, scoped to environment `production`, and allowed **only on `main`**. Branch dispatches
+validate but skip deployment. The current
 feature branch must be integrated into `main` and pushed before production
 dispatch; creating this file locally does not make it available on GitHub.
 
@@ -258,7 +256,8 @@ The action always enables all four timers. For direct helper deployments,
 repeat the switch to request enablement; omitting it disables ACA scheduling.
 Manual administrator posting is
 still live in Production and can send real social/email messages; do not use it
-as a harmless smoke test. See the [migration cutover/rollback checklist](azure-container-apps-migration.md#production-cutover).
+as a harmless smoke test. See
+the [migration cutover/rollback checklist](azure-container-apps-migration.md#production-cutover).
 
 Coffee has its own `coffee-scheduler-disabled` parameter, which defaults to
 string `true` and is passed through to the existing scheduler module as

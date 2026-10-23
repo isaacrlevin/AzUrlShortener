@@ -16,6 +16,13 @@ public class AdminHostingTests
 {
     [TestMethod]
     [DataRow("/urlmanager")]
+    [DataRow("/")]
+    [DataRow("/socialposter")]
+    [DataRow("/socialposter/links")]
+    [DataRow("/socialposter/settings")]
+    [DataRow("/socialposter/contacts")]
+    [DataRow("/socialposter/history")]
+    [DataRow("/socialposter/statistics?link=my-event")]
     [DataRow("/statistics")]
     [DataRow("/auth/login")]
     public async Task ProtectedPagesChallengeEntraWithoutCallingManagementApi(string path)
@@ -89,25 +96,26 @@ public class AdminHostingTests
                 });
             });
         }
-
     }
 
-        [TestMethod]
-        public async Task DescriptionClientAllowsSlowResponsesWithoutRetryingPosts()
-        {
-            await using var application = new AdminFactory();
-            using var client = application.Services.GetRequiredService<IHttpClientFactory>().CreateClient("description");
-            Assert.AreEqual(Timeout.InfiniteTimeSpan, client.Timeout);
-            var options = application.Services
-                .GetRequiredService<Microsoft.Extensions.Options.IOptionsMonitor<Microsoft.Extensions.Http.Resilience.HttpStandardResilienceOptions>>()
-                .Get("description-standard");
-            Assert.AreEqual(TimeSpan.FromSeconds(120), options.AttemptTimeout.Timeout);
-            Assert.AreEqual(TimeSpan.FromSeconds(120), options.TotalRequestTimeout.Timeout);
-            application.ManagementHandler.Delay = TimeSpan.FromSeconds(11);
-            using var response = await client.PostAsync("/api/CreateDescription", new StringContent("{}"));
-            Assert.AreEqual(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-            Assert.AreEqual(1, application.ManagementHandler.RequestCount);
-        }
+    [TestMethod]
+    public async Task DescriptionClientAllowsSlowResponsesWithoutRetryingPosts()
+    {
+        await using var application = new AdminFactory();
+        using var client = application.Services.GetRequiredService<IHttpClientFactory>().CreateClient("description");
+        Assert.AreEqual(Timeout.InfiniteTimeSpan, client.Timeout);
+        var options = application.Services
+            .GetRequiredService<Microsoft.Extensions.Options.IOptionsMonitor<
+                Microsoft.Extensions.Http.Resilience.HttpStandardResilienceOptions>>()
+            .Get("description-standard");
+        Assert.AreEqual(TimeSpan.FromSeconds(120), options.AttemptTimeout.Timeout);
+        Assert.AreEqual(TimeSpan.FromSeconds(120), options.TotalRequestTimeout.Timeout);
+        application.ManagementHandler.Delay = TimeSpan.FromSeconds(11);
+        using var response = await client.PostAsync("/api/CreateDescription", new StringContent("{}"));
+        Assert.AreEqual(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.AreEqual(1, application.ManagementHandler.RequestCount);
+    }
+
     private sealed class UnavailableHandler : HttpMessageHandler
     {
         public int RequestCount { get; private set; }

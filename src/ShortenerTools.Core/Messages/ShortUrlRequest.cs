@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ShortenerTools.Core.Messages
 {
-    public class ShortUrlRequest
+    public class ShortUrlRequest : IValidatableObject
     {
         private string _vanity;
 
@@ -11,7 +11,12 @@ namespace ShortenerTools.Core.Messages
 
         public string Message { get; set; } = string.Empty;
 
+        public string? CreationId { get; set; }
+
         public bool PostToSocial { get; set; } = true;
+
+        /// <summary>Optional per-account post text; each entry is stored as a new version.</summary>
+        public List<AccountPost>? Posts { get; set; }
 
         public string Vanity
         {
@@ -28,5 +33,11 @@ namespace ShortenerTools.Core.Messages
         [Required]
         [Url]
         public string Url { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (ShortcodePolicy.GetError(Vanity) is { } error)
+                yield return new ValidationResult(error, [nameof(Vanity)]);
+        }
     }
 }

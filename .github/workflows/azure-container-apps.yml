@@ -2,15 +2,15 @@ name: Aspire Azure Container Apps
 
 on:
   pull_request:
-    branches: [main]
+    branches: [ main ]
   push:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       environment:
         description: Deployment environment
         type: choice
-        options: [production]
+        options: [ production ]
         default: production
         required: true
 
@@ -35,6 +35,11 @@ jobs:
         run: dotnet build src/shortenerTools.sln --configuration Release --no-restore
       - name: Test
         run: dotnet test src/ShortenerTools.Tests/ShortenerTools.Tests.csproj --configuration Release --no-build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test SocialPoster draft handoff
+        run: node src/tools/Test-SocialPosterLinks.cjs
       - name: Install Aspire CLI
         run: dotnet tool install --global Aspire.Cli --version 13.6.1
       - name: Test safe deployment helper
@@ -80,14 +85,8 @@ jobs:
       Parameters__custom_domain: ${{ vars.SHORT_LINK_DOMAIN }}
       Parameters__redirect_certificate_name: ${{ vars.REDIRECT_CERTIFICATE_NAME }}
       Parameters__default_redirect_url: ${{ vars.DEFAULT_REDIRECT_URL }}
-      Parameters__twitter_consumer_key: ${{ secrets.TWITTER_CONSUMER_KEY }}
-      Parameters__twitter_consumer_secret: ${{ secrets.TWITTER_CONSUMER_SECRET }}
-      Parameters__twitter_access_token: ${{ secrets.TWITTER_ACCESS_TOKEN }}
-      Parameters__twitter_access_secret: ${{ secrets.TWITTER_ACCESS_SECRET }}
-      Parameters__mastodon_access_token: ${{ secrets.MASTODON_ACCESS_TOKEN }}
-      Parameters__linkedin_access_token: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
-      Parameters__bluesky_username: ${{ secrets.BLUESKY_USERNAME }}
-      Parameters__bluesky_password: ${{ secrets.BLUESKY_PASSWORD }}
+      Parameters__social_accounts_connection_string: ${{ secrets.SOCIAL_ACCOUNTS_CONFIG_READWRITE_CONNECTION_STRING }}
+      Parameters__social_accounts_readonly_connection_string: ${{ secrets.SOCIAL_ACCOUNTS_CONFIG_READONLY_CONNECTION_STRING }}
       Parameters__threads_token: ${{ secrets.THREADS_TOKEN }}
       Parameters__communication_services_connection_string: ${{ secrets.COMMUNICATION_SERVICES_CONNECTION_STRING }}
       Parameters__email_from: ${{ secrets.EMAIL_FROM }}

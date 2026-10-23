@@ -30,6 +30,8 @@ function aspire {
     foreach ($key in @('Parameters__scheduler-disabled', 'Parameters__azure-openai-deployment-name',
         'Parameters__scheduler_disabled', 'Parameters__coffee-scheduler-disabled', 'Parameters__coffee_scheduler_disabled',
         'ConnectionStrings__chat', 'Parameters__twitter-consumer-key', 'Parameters__admin-api-key',
+        'Parameters__social-accounts-connection-string',
+        'Parameters__social-accounts-readonly-connection-string',
         'Parameters__custom-domain', 'Parameters__default-redirect-url',
         'Parameters__redirect-domain-name', 'Parameters__redirect_domain_name', 'Parameters__redirect-certificate-name',
         'Parameters__existing-storage-account', 'Parameters__existing-storage-resource-group')) {
@@ -56,15 +58,15 @@ try {
     Expect-Failure { & $helper -LocalSettingsPath $settings } 'Encrypted Functions settings'
 
     $values = @{}
-    foreach ($key in @('TwitterConsumerKey', 'TwitterConsumerSecret', 'TwitterAccessToken',
-        'TwitterAccessSecret', 'MastodonAccessToken', 'LinkedInAccessToken', 'BlueskyUserName',
-        'BlueskyPassword', 'ThreadsToken', 'COMMUNICATION_SERVICES_CONNECTION_STRING',
+    foreach ($key in @('ThreadsToken', 'COMMUNICATION_SERVICES_CONNECTION_STRING',
         'EmailFrom', 'EmailTo', 'AdminApiKey', 'AzureOpenAIKey')) {
         $values[$key] = 'synthetic-private'
     }
     $values.CustomDomain = 'https://short.example.com'
     $values.DefaultRedirectUrl = 'https://example.com'
     $values.AzureOpenAIEndpoint = 'https://ai.example.com'
+    $values['ConnectionStrings:social-accounts'] = 'Endpoint=https://social-config.example.com;Id=fixture;Secret=synthetic-private'
+    $values['ConnectionStrings:social-accounts-readonly'] = 'Endpoint=https://social-config.example.com;Id=reader;Secret=synthetic-private'
     $values.AzureOpenAIDeploymentName = 'synthetic-model'
     @{ IsEncrypted = $false; Values = $values } | ConvertTo-Json | Set-Content $settings
 

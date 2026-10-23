@@ -7,7 +7,7 @@ using System.Diagnostics;
 
 namespace ShortenerTools.Functions.Functions;
 
-public class SchedulePost(ShortenerSettings settings, ISocialMediaPublisher publisher)
+public class SchedulePost(ShortenerSettings settings, ISocialMediaPublisher publisher, StorageTableHelper? tables = null)
 {
     public string ShortenerBase => settings.CustomDomain.TrimEnd('/') + "/";
 
@@ -41,27 +41,71 @@ public class SchedulePost(ShortenerSettings settings, ISocialMediaPublisher publ
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "api/SchedulePost")]
         HttpRequestData req, ExecutionContext context)
     {
-        if (settings.ExternalPostingAllowed && Debugger.IsAttached)
+        // Under Aspire the host is not the debugged process, so a local run also qualifies.
+        // The publisher itself skips sending when external posting is disabled (dry run).
+        if (Debugger.IsAttached || IsLocalAspire)
         {
-            await PublishToSocial();
+            await PublishToSocial(force: true);
         }
     }
 
-    private async Task PublishToSocial()
+    private bool IsLocalAspire =>
+        Environment.GetEnvironmentVariable("IN_ASPIRE") == "true"
+        && !string.Equals(settings.EnvironmentName, "Production", StringComparison.OrdinalIgnoreCase);
+
+    internal async Task PublishToSocial(bool force = false)
     {
-        if (!settings.ExternalPostingAllowed)
+        if (!force && !settings.ExternalPostingAllowed)
         {
             return;
         }
-        var storage = new StorageTableHelper(settings.DataStorage);
+        var storage = tables ?? new StorageTableHelper(settings.DataStorage);
         var items = await storage.GetAllShortUrlEntities();
         var item = items.Where(p => !p.Posted).OrderBy(p => p.Timestamp).FirstOrDefault();
         if (item is not null)
         {
-            await publisher.PublishAsync(CreatePost(item));
+            // Links with per-platform versions post exactly those; older links keep the single shared message.
+            var versions = LatestVersionPerPlatform(await storage.GetPostVersions(item.RowKey));
+            await publisher.PublishAsync(CreatePost(item, versions.Values.ToList()));
             item.Posted = true;
             await storage.UpdateShortUrlEntity(item);
+            foreach (var version in versions.Values)
+            {
+                await storage.MarkPostVersion(version, PostVersionStatus.Published);
+            }
         }
+    }
+
+    /// <summary>The newest non-legacy version for each platform, keyed by lower-case platform name.</summary>
+    internal static Dictionary<string, PostVersionEntity> LatestVersionPerPlatform(IEnumerable<PostVersionEntity> versions) =>
+        versions.Where(v => !v.IsLegacy && !string.IsNullOrWhiteSpace(v.Text))
+            .GroupBy(v => PlatformOf(v.Account))
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(v => v.Timestamp ?? DateTimeOffset.MinValue).First());
+
+    // Accounts look like "bluesky" or "bluesky:main"; the part before ':' names the platform.
+    private static string PlatformOf(string account)
+    {
+        var platform = account.Split(':')[0].Trim().ToLowerInvariant();
+        return platform == "twitter" ? "x" : platform;
+    }
+
+    internal SocialPost CreatePost(ShortUrlEntity item, IReadOnlyCollection<PostVersionEntity> versions)
+    {
+        var post = CreatePost(item);
+        if (versions.Count == 0) return post;
+
+        var url = $"{ShortenerBase}{item.RowKey}";
+        string? TextFor(string platform) => versions.FirstOrDefault(v => PlatformOf(v.Account) == platform)
+            ?.Text.Replace(PostVersionEntity.ShortUrlToken, url);
+        return post with
+        {
+            TwitterText = TextFor("x") ?? post.TwitterText,
+            BlueskyText = TextFor("bluesky"),
+            LinkedInText = TextFor("linkedin"),
+            MastodonText = TextFor("mastodon"),
+            ThreadsText = TextFor("threads"),
+            Platforms = versions.Select(v => PlatformOf(v.Account)).ToHashSet()
+        };
     }
 
     internal SocialPost CreatePost(ShortUrlEntity item)

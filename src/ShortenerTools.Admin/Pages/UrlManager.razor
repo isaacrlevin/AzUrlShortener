@@ -2,101 +2,117 @@
 @attribute [Authorize(Roles = "admin")]
 @using System.Diagnostics
 @using System.Globalization
-@implements IDisposable
 @inject HttpClient Http
-@inject IHttpClientFactory HttpClientFactory
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject ILogger<UrlManager> Logger
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ISnackbar Snackbar
 
-<PageTitle>Url Manager</PageTitle>
-<h1>Urls Manager</h1>
-<MudText Typo="Typo.h6" Class="mb-4">Create, Edit, Archive your URLs</MudText>
+<PageTitle>Links - SocialPoster</PageTitle>
+<h1>Links</h1>
+<MudText Typo="Typo.body1" Class="mb-4">Manage shortened links and custom shortcodes. Compose opens SocialPoster for
+    publishing or scheduling.
+</MudText>
 
 @if (!string.IsNullOrEmpty(errorMessage))
 {
     <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
 }
 <MudStack Row="true" Class="mb-4">
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateShortUrl" Disabled="busy">Add New Url</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateShortUrl" Disabled="busy">Add New Url
+    </MudButton>
     <MudButton OnClick="LoadUrls" Disabled="busy">Refresh</MudButton>
 </MudStack>
 
 @if (authorized)
 {
-<MudDataGrid @ref="urlGrid" T="ShortUrlEntity" ServerData="LoadUrlPage" Filterable="true" SortMode="SortMode.Multiple"
-             FilterMode="DataGridFilterMode.ColumnFilterRow" Loading="busy" RowsPerPage="100"
-             @bind-CurrentPage="currentPage" Dense="true" Hover="true">
-    <Columns>
-        <PropertyColumn Property="x => x.Timestamp" Title="Timestamp" Format="d" InitialDirection="SortDirection.Descending" />
-        <TemplateColumn Title="Copy" Sortable="false" Filterable="false">
-            <CellTemplate>
-                <MudButton Size="Size.Small" OnClick="@(() => CopyToClipboardAsync(context.Item.ShortUrl))">Copy</MudButton>
-            </CellTemplate>
-        </TemplateColumn>
-        <PropertyColumn Property="x => x.RowKey" Title="Vanity">
-            <CellTemplate>
-                <MudLink Href="@context.Item.ShortUrl" Target="_blank">@context.Item.RowKey</MudLink>
-            </CellTemplate>
-        </PropertyColumn>
-        <PropertyColumn Property="x => x.Title" Title="Title" />
-        <PropertyColumn Property="x => x.Url" Title="Url" />
-        <TemplateColumn Title="Statistics" Sortable="false" Filterable="false">
-            <CellTemplate>
-                <MudIconButton Icon="@Icons.Material.Filled.BarChart" Color="Color.Primary"
-                               OnClick="@(() => NavigateToStats(context.Item.RowKey))" aria-label="View URL statistics" />
-            </CellTemplate>
-        </TemplateColumn>
-        <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
-            <CellTemplate>
-                <MudButton Size="Size.Small" Disabled="busy" OnClick="@(() => EditShortUrl(context.Item))">Edit</MudButton>
-                <MudButton Size="Size.Small" Disabled="busy" OnClick="@(() => ArchiveShortUrl(context.Item))">Archive</MudButton>
-            </CellTemplate>
-        </TemplateColumn>
-    </Columns>
-    <LoadingContent>
-        <div class="loading-state" role="status"><MudProgressCircular Indeterminate="true" />Loading URLs...</div>
-    </LoadingContent>
-    <NoRecordsContent><MudText>No URLs match the current filters.</MudText></NoRecordsContent>
-    <PagerContent><MudDataGridPager T="ShortUrlEntity" PageSizeOptions="@(new[] { 15, 30, 50, 100 })" /></PagerContent>
-</MudDataGrid>
+    <MudDataGrid @ref="urlGrid" T="ShortUrlEntity" ServerData="LoadUrlPage" Filterable="true"
+                 SortMode="SortMode.Multiple"
+                 FilterMode="DataGridFilterMode.ColumnFilterRow" Loading="busy" RowsPerPage="100"
+                 @bind-CurrentPage="currentPage" Dense="true" Hover="true">
+        <Columns>
+            <PropertyColumn Property="x => x.Timestamp" Title="Timestamp" Format="d"
+                            InitialDirection="SortDirection.Descending"/>
+            <TemplateColumn Title="Copy" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    <MudButton Size="Size.Small" OnClick="@(() => CopyToClipboardAsync(context.Item.ShortUrl))">Copy
+                    </MudButton>
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.RowKey" Title="Vanity">
+                <CellTemplate>
+                    <MudLink Href="@context.Item.ShortUrl" Target="_blank">@context.Item.RowKey</MudLink>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.Title" Title="Title"/>
+            <PropertyColumn Property="x => x.Url" Title="Url"/>
+            <TemplateColumn Title="Statistics" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    <MudIconButton Icon="@Icons.Material.Filled.BarChart" Color="Color.Primary"
+                                   OnClick="@(() => NavigateToStats(context.Item.RowKey))"
+                                   aria-label="View URL statistics"/>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    <MudButton Size="Size.Small" Disabled="busy"
+                               OnClick="@(() => ComposeAsync(context.Item.ShortUrl, context.Item.Title, context.Item.Message))">
+                        Compose
+                    </MudButton>
+                    <MudButton Size="Size.Small" Disabled="busy" OnClick="@(() => EditShortUrl(context.Item))">Edit
+                    </MudButton>
+                    <MudButton Size="Size.Small" Disabled="busy" OnClick="@(() => ArchiveShortUrl(context.Item))">
+                        Archive
+                    </MudButton>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <LoadingContent>
+            <div class="loading-state" role="status">
+                <MudProgressCircular Indeterminate="true"/>
+                Loading URLs...
+            </div>
+        </LoadingContent>
+        <NoRecordsContent>
+            <MudText>No URLs match the current filters.</MudText>
+        </NoRecordsContent>
+        <PagerContent>
+            <MudDataGridPager T="ShortUrlEntity" PageSizeOptions="@(new[] { 15, 30, 50, 100 })"/>
+        </PagerContent>
+    </MudDataGrid>
 }
 
 <MudDialog @bind-Visible="showCreatePopup" Options="dialogOptions">
-    <TitleContent><MudText Typo="Typo.h6">Short Url Request</MudText></TitleContent>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Short Url Request</MudText>
+    </TitleContent>
     <DialogContent>
         @if (editContext != null)
         {
-            <EditForm EditContext="editContext" OnValidSubmit="SaveShortUrl">
-                <DataAnnotationsValidator />
-                <ValidationSummary />
+            <EditForm EditContext="editContext" OnValidSubmit="@(() => SaveShortUrl(false))">
+                <DataAnnotationsValidator/>
+                <ValidationSummary/>
                 <MudTextField T="string" Label="Title" @bind-Value="shortUrlRequest.Title"
-                              For="@(() => shortUrlRequest.Title)" Immediate="true" Disabled="saving || generating" />
+                              For="@(() => shortUrlRequest.Title)" Immediate="true" Disabled="saving"/>
                 <MudTextField T="string" Label="Url" @bind-Value="shortUrlRequest.Url"
-                              For="@(() => shortUrlRequest.Url)" Immediate="true" Disabled="saving || generating" />
-                <MudButton OnClick="Generate" Disabled="@(saving || generating || string.IsNullOrWhiteSpace(shortUrlRequest.Url))"
-                           StartIcon="@Icons.Material.Filled.AutoFixHigh" Color="Color.Primary">
-                    @if (generating)
-                    {
-                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                    }
-                    Generate message
-                </MudButton>
+                              For="@(() => shortUrlRequest.Url)" Immediate="true" Disabled="saving"/>
                 <MudTextField T="string" Label="Message" @bind-Value="shortUrlRequest.Message" Lines="5"
-                              For="@(() => shortUrlRequest.Message)" Immediate="true" Disabled="saving || generating" />
-                <MudText Class="my-2">Character Count: @CharacterCount / 239</MudText>
-                <MudTextField T="string" Label="Vanity" @bind-Value="shortUrlRequest.Vanity"
-                              For="@(() => shortUrlRequest.Vanity)" Disabled="saving || generating" />
-                <MudCheckBox T="bool" @bind-Value="shortUrlRequest.PostToSocial" Label="Post to Social" Disabled="saving || generating" />
+                              For="@(() => shortUrlRequest.Message)" Immediate="true" Disabled="saving"/>
+                <MudTextField T="string" Label="Custom shortcode (optional)" @bind-Value="shortUrlRequest.Vanity"
+                              For="@(() => shortUrlRequest.Vanity)" Disabled="saving"/>
+                <MudText Typo="Typo.caption">Leave the shortcode empty to generate one. Saving a link does not publish
+                    it.
+                </MudText>
                 @if (!string.IsNullOrEmpty(dialogError))
                 {
                     <MudAlert Severity="Severity.Error">@dialogError</MudAlert>
                 }
                 <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
-                    <MudButton OnClick="ClosePopup" Disabled="saving || generating">Cancel</MudButton>
-                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="saving || generating">
+                    <MudButton OnClick="ClosePopup" Disabled="saving">Cancel</MudButton>
+                    <MudButton OnClick="SaveAndComposeAsync" Disabled="saving">Save and compose</MudButton>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                               Disabled="saving">
                         @(saving ? "Saving..." : "Save")
                     </MudButton>
                 </MudStack>
@@ -106,23 +122,29 @@
 </MudDialog>
 
 <MudDialog @bind-Visible="showEditPopup" Options="dialogOptions">
-    <TitleContent><MudText Typo="Typo.h6">Edit Short Url</MudText></TitleContent>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Edit Short Url</MudText>
+    </TitleContent>
     <DialogContent>
         @if (editedUrl != null)
         {
             <EditForm Model="editedUrl" OnValidSubmit="SaveUpdatedShortUrl">
-                <DataAnnotationsValidator />
-                <ValidationSummary />
-                <MudTextField T="string" Label="Title" @bind-Value="editedUrl.Title" For="@(() => editedUrl.Title)" Disabled="saving" />
-                <MudTextField T="string" Label="Message" @bind-Value="editedUrl.Message" For="@(() => editedUrl.Message)" Lines="5" Disabled="saving" />
-                <MudTextField T="string" Label="The Url to redirect" @bind-Value="editedUrl.Url" For="@(() => editedUrl.Url)" Disabled="saving" />
+                <DataAnnotationsValidator/>
+                <ValidationSummary/>
+                <MudTextField T="string" Label="Title" @bind-Value="editedUrl.Title" For="@(() => editedUrl.Title)"
+                              Disabled="saving"/>
+                <MudTextField T="string" Label="Message" @bind-Value="editedUrl.Message"
+                              For="@(() => editedUrl.Message)" Lines="5" Disabled="saving"/>
+                <MudTextField T="string" Label="The Url to redirect" @bind-Value="editedUrl.Url"
+                              For="@(() => editedUrl.Url)" Disabled="saving"/>
                 @if (!string.IsNullOrEmpty(dialogError))
                 {
                     <MudAlert Severity="Severity.Error">@dialogError</MudAlert>
                 }
                 <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
                     <MudButton OnClick="ClosePopup" Disabled="saving">Cancel</MudButton>
-                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="saving">
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                               Disabled="saving">
                         @(saving ? "Saving..." : "Save")
                     </MudButton>
                 </MudStack>
@@ -138,19 +160,16 @@
     private string previousCriteria;
     private string loadedQuery;
     private ListResponse loadedPage;
-    private ShortUrlRequest shortUrlRequest = new();
+    private ShortUrlRequest shortUrlRequest = new() { PostToSocial = false };
     private ShortUrlEntity editedUrl;
     private EditContext editContext;
-    private ValidationMessageStore messageStore;
     private bool showCreatePopup;
     private bool showEditPopup;
     private bool busy = true;
     private bool saving;
-    private bool generating;
     private string errorMessage;
     private string dialogError;
     private readonly DialogOptions dialogOptions = new() { FullWidth = true, MaxWidth = MaxWidth.Small, BackdropClick = false, CloseOnEscapeKey = false };
-    private int CharacterCount => 25 + (shortUrlRequest.Title?.Length ?? 0) + (shortUrlRequest.Message?.Length ?? 0);
 
     protected override async Task OnInitializedAsync()
     {
@@ -203,6 +222,7 @@
                 currentPage = 0;
                 query.Skip = 0;
             }
+
             var page = await FetchUrlPage(query, cancellationToken);
             if (query.Skip > 0 && query.Skip >= page.TotalCount)
             {
@@ -210,6 +230,7 @@
                 query.Skip = 0;
                 page = await FetchUrlPage(query, cancellationToken);
             }
+
             return new GridData<ShortUrlEntity> { Items = page.UrlList, TotalItems = page.TotalCount };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -255,64 +276,68 @@
 
     private void CreateShortUrl()
     {
-        DetachValidation();
-        shortUrlRequest = new();
+        shortUrlRequest = new() { PostToSocial = false };
         editContext = new(shortUrlRequest);
-        messageStore = new(editContext);
-        editContext.OnFieldChanged += HandleFieldChanged;
-        editContext.OnValidationRequested += HandleValidationRequested;
         dialogError = null;
         showCreatePopup = true;
     }
 
-    private void ValidateCharacterCount()
+    private async Task SaveAndComposeAsync()
     {
-        messageStore.Clear();
-        if (CharacterCount > 239)
-            messageStore.Add(() => shortUrlRequest.Message, "Character count must be 239 or less.");
-        editContext.NotifyValidationStateChanged();
+        if (editContext.Validate())
+            await SaveShortUrl(true);
     }
 
-    private void HandleFieldChanged(object sender, FieldChangedEventArgs args) => ValidateCharacterCount();
-    private void HandleValidationRequested(object sender, ValidationRequestedEventArgs args) => ValidateCharacterCount();
-
-    private async Task SaveShortUrl()
+    private async Task SaveShortUrl(bool compose)
     {
-        if (await SaveRequest("/api/UrlCreate", shortUrlRequest))
-        {
-            ClosePopup();
-            await LoadUrls();
-        }
-    }
-
-    private async Task Generate()
-    {
-        generating = true;
+        if (saving) return;
+        saving = true;
         dialogError = null;
         try
         {
-            using var client = HttpClientFactory.CreateClient("description");
-            using var response = await client.PostAsJsonAsync("/api/CreateDescription", shortUrlRequest);
-            EnsureApiSuccess(response);
-            var message = await response.Content.ReadFromJsonAsync<string>();
-            if (message == null)
-                throw new JsonException("The description response was empty.");
-            shortUrlRequest.Message = message.Replace("\"", string.Empty);
-            editContext.NotifyFieldChanged(FieldIdentifier.Create(() => shortUrlRequest.Message));
-        }
-        catch (Polly.Timeout.TimeoutRejectedException ex)
-        {
-            Logger.LogError(ex, "Description generation exceeded the request timeout");
-            dialogError = "Description generation took too long. Please try again.";
+            shortUrlRequest.PostToSocial = false;
+            using var response = await Http.PostAsJsonAsync("/api/UrlCreate", shortUrlRequest);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadFromJsonAsync<JsonElement>();
+                dialogError = error.EnumerateObject()
+                        .FirstOrDefault(p => p.Name.Equals("Message", StringComparison.OrdinalIgnoreCase)).Value
+                    is { ValueKind: JsonValueKind.String } message
+                    ? message.GetString()
+                    : "Unable to create the link.";
+                return;
+            }
+
+            var created = await response.Content.ReadFromJsonAsync<ShortResponse>()
+                          ?? throw new JsonException("The short link response was empty.");
+            ClosePopup();
+            await LoadUrls();
+            if (compose)
+                await ComposeAsync(created.ShortUrl, created.Title, created.Message);
         }
         catch (Exception ex) when (ex is HttpRequestException or JsonException or TaskCanceledException)
         {
-            Logger.LogError(ex, "Unable to generate a message");
-            dialogError = "Unable to generate a message. Please try again.";
+            Logger.LogError(ex, "Unable to create short link");
+            dialogError = "Unable to create the link. Please try again.";
         }
         finally
         {
-            generating = false;
+            saving = false;
+        }
+    }
+
+    private async Task ComposeAsync(string shortUrl, string title, string message)
+    {
+        try
+        {
+            // Use SocialPoster's saved-draft API; keep existing text, overrides and selections.
+            await JSRuntime.InvokeVoidAsync("shortenerComposeLink", shortUrl, title, message);
+            NavigationManager.NavigateTo("/socialposter");
+        }
+        catch (JSException ex)
+        {
+            Logger.LogError(ex, "Unable to add link to the SocialPoster draft");
+            Snackbar.Add("The link is saved, but the draft could not be opened. Copy the link and open Compose.", Severity.Error);
         }
     }
 
@@ -350,6 +375,7 @@
                 dialogError = "This vanity URL already exists. Choose a different vanity.";
                 return false;
             }
+
             EnsureApiSuccess(response);
             return true;
         }
@@ -395,23 +421,12 @@
         }
     }
 
-    private void NavigateToStats(string vanity) => NavigationManager.NavigateTo("/statistics/" + Uri.EscapeDataString(vanity));
+    private void NavigateToStats(string vanity) => NavigationManager.NavigateTo("/socialposter/statistics?link=" + Uri.EscapeDataString(vanity));
 
     private void ClosePopup()
     {
         showCreatePopup = false;
         showEditPopup = false;
-        DetachValidation();
     }
 
-    private void DetachValidation()
-    {
-        if (editContext != null)
-        {
-            editContext.OnFieldChanged -= HandleFieldChanged;
-            editContext.OnValidationRequested -= HandleValidationRequested;
-        }
-    }
-
-    public void Dispose() => DetachValidation();
 }

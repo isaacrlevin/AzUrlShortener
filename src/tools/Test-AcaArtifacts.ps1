@@ -103,6 +103,7 @@ $redirectFunctions = @($redirectEnv | Where-Object name -Like 'AzureFunctionsJob
 Assert-Condition ($redirectFunctions.Count -eq 1 -and
     $redirectFunctions[0].value -eq 'UrlRedirect') 'Public container must only enable redirects.'
 Assert-Condition (@($redirectEnv | Where-Object name -EQ 'AdminApiKey').Count -eq 0) 'Redirect must not receive the admin key.'
+Assert-Condition (@($redirectEnv | Where-Object name -EQ 'ConnectionStrings__social-accounts').Count -eq 0) 'Public redirect must not receive social account access.'
 Assert-Condition (@($redirectEnv | Where-Object {
     $_.name -eq 'ConnectionStrings__chat' -or
     $_.name -match '^(Twitter|Mastodon|LinkedIn|Bluesky|Threads|Email|COMMUNICATION_SERVICES)'
@@ -172,12 +173,14 @@ Assert-Condition (@($apiEnv | Where-Object {
     $_.name -like 'AzureFunctionsJobHost__functions__*' -and $_.value -in (@('UrlRedirect') + $expectedTimers)
 }).Count -eq 0) 'API must not enable redirects or timer.'
 $expectedApiFunctions = @('UrlList', 'UrlCreate', 'UrlUpdate', 'UrlArchive', 'UrlStats',
-    'UrlClickStatsByDay', 'CreateDescription', 'SchedulePostHttp', 'TestShortUrl',
+    'UrlClickStatsByDay', 'UrlPostVersions', 'CreateDescription', 'ShortPostHttp', 'TestShortUrl',
     'COSSPublishHttp', 'COSSTeaserHttp', 'COSSAnnouncementHttp', 'COSSArchiveHttp')
 $apiFunctions = @($apiEnv | Where-Object name -Like 'AzureFunctionsJobHost__functions__*')
 Assert-Condition ($apiFunctions.Count -eq $expectedApiFunctions.Count -and
     @(Compare-Object $expectedApiFunctions @($apiFunctions.value)).Count -eq 0) 'Management must allow exactly its HTTP functions, including Coffee.'
 Assert-Condition (@($apiEnv | Where-Object name -EQ 'AdminApiKey')[0].secretRef -eq 'adminapikey') 'API key must be a secret reference.'
+Assert-Condition (@($apiEnv | Where-Object name -EQ 'ConnectionStrings__social-accounts')[0].secretRef -eq 'connectionstrings--social-accounts') 'Management Functions must receive only the read-only SocialPoster configuration credential.'
+Assert-Condition (@($schedulerEnv | Where-Object name -EQ 'ConnectionStrings__social-accounts')[0].secretRef -eq 'connectionstrings--social-accounts') 'Scheduled Functions must receive only the read-only SocialPoster configuration credential.'
 foreach ($app in @($redirect, $api, $scheduler)) {
     Assert-Condition (@($app.properties.template.containers[0].env |
         Where-Object name -EQ 'tables__tableServiceUri').Count -eq 1) 'Each Functions app must receive the existing Table endpoint.'
@@ -185,4 +188,5 @@ foreach ($app in @($redirect, $api, $scheduler)) {
 $adminEnv = $admin.properties.template.containers[0].env
 Assert-Condition (@($adminEnv | Where-Object name -EQ 'Entra__ClientSecret')[0].secretRef -eq 'entra--clientsecret') 'Entra client secret must be a secret reference.'
 Assert-Condition (@($adminEnv | Where-Object name -EQ 'Entra__AdministratorObjectId').Count -eq 1) 'Admin must receive its allowed object ID.'
+Assert-Condition (@($adminEnv | Where-Object name -EQ 'ConnectionStrings__social-accounts')[0].secretRef -eq 'connectionstrings--social-accounts') 'Admin must receive the read/write SocialPoster configuration credential.'
 Write-Output 'ACA ingress, scaling, function isolation, storage, secrets, AI, independent shortener/Coffee scheduler cutover and workspace-based Insights/4-app telemetry assertions passed.'

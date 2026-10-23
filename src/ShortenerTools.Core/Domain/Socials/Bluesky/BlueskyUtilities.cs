@@ -9,7 +9,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
-
 namespace ShortenerTools.Core.Domain.Socials.Bluesky
 {
     public static class BlueskyUtilities
@@ -26,6 +25,9 @@ namespace ShortenerTools.Core.Domain.Socials.Bluesky
                 facets.Add((GetUtf8ByteIndex(text, mention.Index), GetUtf8ByteIndex(text, mention.Index + mention.Length), mention.Value));
             }
 
+
+            
+            
             return facets;
         }
 

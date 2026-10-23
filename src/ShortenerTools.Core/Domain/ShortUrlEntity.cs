@@ -16,6 +16,9 @@ namespace ShortenerTools.Core.Domain
 
         public string Message { get; set; }
 
+        /// <summary>Optional idempotency token for links created by a SocialPoster draft.</summary>
+        public string? CreationId { get; set; }
+
         public string ShortUrl { get; set; }
 
         public bool IsArchived { get; set; } = false;

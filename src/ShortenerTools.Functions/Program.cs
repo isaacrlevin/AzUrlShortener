@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -17,6 +18,20 @@ using Microsoft.Extensions.Logging;
 var builder = FunctionsApplication.CreateBuilder(args);
 
 builder.ConfigureFunctionsWebApplication();
+var socialAccountsConnectionString = builder.Configuration.GetConnectionString("social-accounts");
+if (!string.IsNullOrWhiteSpace(socialAccountsConnectionString))
+{
+    builder.Configuration.AddAzureAppConfiguration(options => options
+        .Connect(socialAccountsConnectionString)
+        .Select("Shortener:*")
+        .TrimKeyPrefix("Shortener:")
+        .ConfigureRefresh(refresh => refresh
+            .Register("SocialPoster:Accounts:Sentinel", refreshAll: true)
+            .SetRefreshInterval(TimeSpan.FromSeconds(5))));
+    builder.Services.AddAzureAppConfiguration();
+    builder.UseMiddleware<AzureAppConfigurationRefreshMiddleware>();
+}
+
 builder.UseMiddleware<AdminApiKeyMiddleware>();
 
 
@@ -45,20 +60,21 @@ else if (!string.IsNullOrWhiteSpace(tableEndpoint))
 builder.Services.AddHttpClient();
 builder.Services.AddHttpClient<ICoffeeGuestFeed, CoffeeGuestFeed>();
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<ISocialMediaPublisher, SocialMediaPublisher>();
+builder.Services.AddSingleton<ISocialMediaPublisher, SocialPosterPublisher>();
 builder.Services.AddSingleton<ILinkedInManager, LinkedInManager>();
 builder.Services.AddSingleton<IThreadsManager, ThreadsManager>();
 builder.Services.AddSingleton<EmailService, EmailService>();
 builder.Services.AddOptions<KestrelServerOptions>()
-.Configure<IConfiguration>((settings, configuration) =>
-{
-    settings.AllowSynchronousIO = true;
-    configuration.Bind(settings);
-});
+    .Configure<IConfiguration>((settings, configuration) =>
+    {
+        settings.AllowSynchronousIO = true;
+        configuration.Bind(settings);
+    });
 
 builder.Logging.Services.Configure<LoggerFilterOptions>(options =>
 {
-    LoggerFilterRule defaultRule = options.Rules.FirstOrDefault(rule => rule.ProviderName == "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider");
+    LoggerFilterRule defaultRule = options.Rules.FirstOrDefault(rule =>
+        rule.ProviderName == "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider");
 
     if (defaultRule is not null)
     {
@@ -75,4 +91,5 @@ if (!builder.Environment.IsStaging() &&
     builder.AddAIServices();
 }
 
-builder.Build().Run();
+var app = builder.Build();
+app.Run();

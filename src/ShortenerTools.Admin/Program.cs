@@ -2,8 +2,12 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Http.Resilience;
 using MudBlazor.Services;
+using SocialPoster.Components;
+using SocialPoster.Core;
+using SocialPoster.Core.Scheduling;
 using ShortenerTools.Admin;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,11 +16,28 @@ builder.Services.AddMudServices();
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddCascadingAuthenticationState();
 
-builder.Services.AddAuthentication(options =>
+var socialPosterDataDirectory = builder.Configuration["SocialPoster:DataDirectory"]
+                                ?? Path.Combine(builder.Environment.ContentRootPath, "socialposter-data");
+builder.Services.AddSocialPosterCore(options =>
 {
-    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
-})
+    builder.Configuration.GetSection("SocialPoster").Bind(options);
+    options.DataDirectory = socialPosterDataDirectory;
+});
+builder.Services.AddSocialPosterScheduling(options =>
+    builder.Configuration.GetSection("SocialPoster:Scheduling").Bind(options));
+builder.Services.AddSocialPosterSchedulingWorker();
+builder.Services.AddSocialPosterComponents(options => options.BasePath = "socialposter");
+builder.Services.AddHostedService<SocialAccountsConfigurationPublisher>();
+builder.Services.AddScoped<ComposerLinkWorkflow>();
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(Path.GetFullPath(socialPosterDataDirectory), "keys")))
+    .SetApplicationName("ShortenerTools.Admin");
+
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+    })
     .AddCookie(options =>
     {
         options.Cookie.Name = "__Host-ShortenerAdmin";
@@ -48,6 +69,7 @@ builder.Services.AddAuthentication(options =>
             {
                 identity.AddClaim(new Claim(ClaimTypes.Role, "admin"));
             }
+
             return Task.CompletedTask;
         };
         options.Events.OnRemoteFailure = context =>
@@ -71,29 +93,32 @@ builder.Services.AddHttpClient("management", client =>
 });
 #pragma warning disable EXTEXP0001 // Replace inherited resilience only for slow AI requests.
 builder.Services.AddHttpClient("description", client =>
-{
-    client.BaseAddress = new Uri("https+http://management-api");
-    client.DefaultRequestHeaders.Add("X-Admin-Api-Key", RequiredSetting("AdminApiKey"));
-    client.Timeout = TimeSpan.FromSeconds(130);
-})
-.RemoveAllResilienceHandlers()
-.AddStandardResilienceHandler(options =>
-{
-    options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(120);
-    options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(120);
-    options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(240);
-    options.Retry.DisableForUnsafeHttpMethods();
-});
+    {
+        client.BaseAddress = new Uri("https+http://management-api");
+        client.DefaultRequestHeaders.Add("X-Admin-Api-Key", RequiredSetting("AdminApiKey"));
+        client.Timeout = TimeSpan.FromSeconds(130);
+    })
+    .RemoveAllResilienceHandlers()
+    .AddStandardResilienceHandler(options =>
+    {
+        options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(120);
+        options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(120);
+        options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(240);
+        options.Retry.DisableForUnsafeHttpMethods();
+    });
 #pragma warning restore EXTEXP0001
 builder.Services.AddScoped(services =>
     services.GetRequiredService<IHttpClientFactory>().CreateClient("management"));
 
 var app = builder.Build();
+Directory.CreateDirectory(Path.Combine(Path.GetFullPath(socialPosterDataDirectory), "keys"));
+await app.Services.InitializeSocialPosterAsync();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/error");
     app.UseHsts();
 }
+
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAuthentication();
@@ -111,7 +136,7 @@ app.MapPost("/auth/logout", async (HttpContext context,
     return Results.SignOut(new AuthenticationProperties { RedirectUri = "/" },
         [CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme]);
 }).RequireAuthorization();
-app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+app.MapRazorComponents<ShortenerTools.Admin.App>().AddInteractiveServerRenderMode();
 app.MapDefaultEndpoints();
 app.Run();
 

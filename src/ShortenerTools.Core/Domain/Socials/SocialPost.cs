@@ -8,6 +8,11 @@ public sealed record SocialPost(string Key, string Title, string Text, string Ur
     public string? LinkedInText { get; init; }
     public string? ThreadsText { get; init; }
     public string? ThreadsUrl { get; init; }
+
+    /// <summary>Platforms to publish to (x, bluesky, linkedin, mastodon, threads); null publishes to all.</summary>
+    public IReadOnlySet<string>? Platforms { get; init; }
+
+    public bool Targets(string platform) => Platforms is null || Platforms.Contains(platform.ToLowerInvariant());
 }
 
 public interface ISocialMediaPublisher

@@ -1,5 +1,7 @@
 using Aspire.Hosting.Azure;
 using Azure.Provisioning;
+using Azure.Provisioning.AppContainers;
+using Azure.Provisioning.Expressions;
 using Azure.Provisioning.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -13,22 +15,26 @@ var schedulerDisabled = builder.AddParameter("scheduler-disabled", "true", publi
 var coffeeSchedulerDisabled = builder.AddParameter("coffee-scheduler-disabled", "true", publishValueAsDefault: true);
 string[] coffeeTimers = ["COSSTeaserTimer", "COSSAnnouncementTimer", "COSSArchiveTimer"];
 var coffeePostingAllowed = !builder.ExecutionContext.IsRunMode && builder.Environment.IsProduction();
-var aiDeploymentName = isStaging ? null : builder.ExecutionContext.IsRunMode
-    ? builder.AddParameter("azure-openai-deployment-name",
-        builder.Configuration["Parameters:azure-openai-deployment-name"] ?? "gpt-4o-mini")
-    : builder.AddParameter("azure-openai-deployment-name");
+var aiDeploymentName = isStaging
+    ? null
+    : builder.ExecutionContext.IsRunMode
+        ? builder.AddParameter("azure-openai-deployment-name",
+            builder.Configuration["Parameters:azure-openai-deployment-name"] ?? "gpt-4o-mini")
+        : builder.AddParameter("azure-openai-deployment-name");
 
 var useOllama = !isStaging && builder.ExecutionContext.IsRunMode
-    && builder.Configuration.GetValue("Ollama:UseLocalModel", true);
+                           && builder.Configuration.GetValue("Ollama:UseLocalModel", true);
 var useGpu = builder.Configuration.GetValue<bool>("Ollama:UseGpu");
 
-var chat = isStaging ? null : useOllama
-    ? builder.AddOllama("ollama")
-        .WithDataVolume()
-        .WithContainerRuntimeArgs(useGpu ? ["--gpus=all"] : [])
-        .WithOpenWebUI()
-        .AddModel("chat", "llama3")
-    : builder.AddConnectionString("chat");
+var chat = isStaging
+    ? null
+    : useOllama
+        ? builder.AddOllama("ollama")
+            .WithDataVolume()
+            .WithContainerRuntimeArgs(useGpu ? ["--gpus=all"] : [])
+            .WithOpenWebUI()
+            .AddModel("chat", "llama3")
+        : builder.AddConnectionString("chat");
 
 // The URL tables stay in their existing account. ACA references it by resource
 // ID and grants data-plane access to managed identities; Functions host state
@@ -47,7 +53,7 @@ else if (!isStaging)
 
 var tables = storage.AddTables("tables");
 var useProductionData = !isStaging && builder.ExecutionContext.IsRunMode
-    && builder.Configuration.GetValue<bool>("Storage:UseProduction");
+                                   && builder.Configuration.GetValue<bool>("Storage:UseProduction");
 var productionData = useProductionData ? builder.AddConnectionString("production-data") : null;
 var hostStorage = builder.AddAzureStorage("functions-host");
 if (builder.ExecutionContext.IsRunMode)
@@ -60,6 +66,23 @@ var entraClientId = builder.AddParameter("entra-client-id");
 var entraClientSecret = builder.AddParameter("entra-client-secret", secret: true);
 var administratorObjectId = builder.AddParameter("administrator-object-id");
 var adminApiKey = builder.AddParameter("admin-api-key", secret: true);
+var socialAccountsConnectionStringConfigured = !string.IsNullOrWhiteSpace(
+    builder.Configuration["Parameters:social-accounts-connection-string"]);
+var socialAccountsReadOnlyConnectionStringConfigured = !string.IsNullOrWhiteSpace(
+    builder.Configuration["Parameters:social-accounts-readonly-connection-string"]);
+IResourceBuilder<ParameterResource>? socialAccountsConnectionString = null;
+IResourceBuilder<ParameterResource>? socialAccountsReadOnlyConnectionString = null;
+if (!builder.ExecutionContext.IsRunMode || socialAccountsConnectionStringConfigured)
+{
+    socialAccountsConnectionString = builder.AddParameter("social-accounts-connection-string", secret: true);
+}
+
+if (!builder.ExecutionContext.IsRunMode || socialAccountsReadOnlyConnectionStringConfigured)
+{
+    socialAccountsReadOnlyConnectionString =
+        builder.AddParameter("social-accounts-readonly-connection-string", secret: true);
+}
+
 // Reserved .invalid hosts prevent staging from defaulting to a production URL.
 // Operators replace the short-link base after ACA assigns the redirect hostname.
 var customDomain = isStaging
@@ -68,9 +91,11 @@ var customDomain = isStaging
         publishValueAsDefault: true)
     : builder.AddParameter("custom-domain");
 var redirectDomainName = builder.ExecutionContext.IsRunMode || isStaging
-    ? null : builder.AddParameter("redirect-domain-name");
+    ? null
+    : builder.AddParameter("redirect-domain-name");
 var redirectCertificateName = builder.ExecutionContext.IsRunMode || isStaging
-    ? null : builder.AddParameter("redirect-certificate-name");
+    ? null
+    : builder.AddParameter("redirect-certificate-name");
 var defaultRedirectUrl = isStaging
     ? builder.AddParameter("default-redirect-url",
         builder.Configuration["Parameters:default-redirect-url"] ?? "https://redirect.staging.invalid",
@@ -79,14 +104,6 @@ var defaultRedirectUrl = isStaging
 var scheduleSettings = new Dictionary<string, IResourceBuilder<ParameterResource>>();
 if (!builder.ExecutionContext.IsRunMode && !isStaging)
 {
-    scheduleSettings["TwitterConsumerKey"] = builder.AddParameter("twitter-consumer-key", secret: true);
-    scheduleSettings["TwitterConsumerSecret"] = builder.AddParameter("twitter-consumer-secret", secret: true);
-    scheduleSettings["TwitterAccessToken"] = builder.AddParameter("twitter-access-token", secret: true);
-    scheduleSettings["TwitterAccessSecret"] = builder.AddParameter("twitter-access-secret", secret: true);
-    scheduleSettings["MastodonAccessToken"] = builder.AddParameter("mastodon-access-token", secret: true);
-    scheduleSettings["LinkedInAccessToken"] = builder.AddParameter("linkedin-access-token", secret: true);
-    scheduleSettings["BlueskyUserName"] = builder.AddParameter("bluesky-username", secret: true);
-    scheduleSettings["BlueskyPassword"] = builder.AddParameter("bluesky-password", secret: true);
     scheduleSettings["ThreadsToken"] = builder.AddParameter("threads-token", secret: true);
     scheduleSettings["COMMUNICATION_SERVICES_CONNECTION_STRING"] = builder.AddParameter(
         "communication-services-connection-string", secret: true);
@@ -96,6 +113,57 @@ if (!builder.ExecutionContext.IsRunMode && !isStaging)
 }
 
 var aca = builder.AddAzureContainerAppEnvironment("aca");
+// SocialPoster keeps its database (accounts, GitHub Copilot sign-in, contacts, history) and the data-protection keys
+// that decrypt them on disk. Container filesystems are replaced on every revision, so deployed runs mount an
+// Azure Files share instead; local runs keep using the working directory.
+const string socialPosterShare = "socialposter-data";
+const string socialPosterMount = "/mnt/socialposter-data";
+if (!builder.ExecutionContext.IsRunMode)
+{
+    aca.ConfigureInfrastructure(infrastructure =>
+    {
+        var environment = infrastructure.GetProvisionableResources().OfType<ContainerAppManagedEnvironment>().Single();
+        var files = new StorageAccount("socialposterfiles")
+        {
+            Name = BicepFunction.Take(
+                BicepFunction.Interpolate($"socialposter{BicepFunction.GetUniqueString(BicepFunction.GetResourceGroup().Id)}"), 24),
+            Kind = StorageKind.StorageV2,
+            Sku = new StorageSku { Name = StorageSkuName.StandardLrs },
+            // Container Apps authenticate to Azure Files with an account key.
+            AllowSharedKeyAccess = true,
+            AllowBlobPublicAccess = false,
+            MinimumTlsVersion = StorageMinimumTlsVersion.Tls1_2
+        };
+        var fileService = new FileService("socialposterfileservice") { Parent = files };
+        var share = new Azure.Provisioning.Storage.FileShare("socialposterfileshare")
+        {
+            Parent = fileService, Name = socialPosterShare
+        };
+        var mount = new ContainerAppManagedEnvironmentStorage("socialpostermount")
+        {
+            Parent = environment,
+            Name = socialPosterShare,
+            Properties = new ManagedEnvironmentStorageProperties
+            {
+                AzureFile = new ContainerAppAzureFileProperties
+                {
+                    AccountName = files.Name,
+                    // Resolves to files.listKeys().keys[0].value in the generated Bicep.
+                    AccountKey = new BicepValue<string>(new MemberExpression(new IndexExpression(
+                        new MemberExpression(new FunctionCallExpression(new MemberExpression(
+                            new IdentifierExpression(files.BicepIdentifier), "listKeys")), "keys"),
+                        new IntLiteralExpression(0)), "value")),
+                    ShareName = share.Name,
+                    AccessMode = ContainerAppAccessMode.ReadWrite
+                }
+            }
+        };
+        infrastructure.Add(files);
+        infrastructure.Add(fileService);
+        infrastructure.Add(share);
+        infrastructure.Add(mount);
+    });
+}
 // Only publishing/deployment models Azure telemetry resources. Local runs use
 // the Aspire dashboard without provisioning Azure or requiring an Insights secret.
 var appInsights = builder.ExecutionContext.IsRunMode
@@ -162,7 +230,8 @@ var managementApi = managementApiProject
     .WithEnvironment("IN_ASPIRE", "true")
     .WithEnvironment("USE_OLLAMA", useOllama.ToString())
     .WithEnvironment("AZURE_FUNCTIONS_ENVIRONMENT", builder.Environment.EnvironmentName)
-    .WithEnvironment("DisableExternalPosting", isStaging.ToString())
+    // Local runs are a dry run: nothing is sent to real social accounts.
+    .WithEnvironment("DisableExternalPosting", (isStaging || builder.ExecutionContext.IsRunMode).ToString())
     // Production administrators may invoke Coffee manually; timer opt-in is
     // separate. Local/staging Coffee never sends, even with live-data opt-ins.
     .WithEnvironment("PostSocials", coffeePostingAllowed.ToString())
@@ -176,18 +245,25 @@ var managementApi = managementApiProject
 string[] managementFunctions =
 [
     "UrlList", "UrlCreate", "UrlUpdate", "UrlArchive", "UrlStats",
-    "UrlClickStatsByDay", "CreateDescription", "SchedulePostHttp", "TestShortUrl",
+    "UrlClickStatsByDay", "UrlPostVersions", "CreateDescription", "ShortPostHttp", "TestShortUrl",
     "COSSPublishHttp", "COSSTeaserHttp", "COSSAnnouncementHttp", "COSSArchiveHttp"
 ];
 for (var index = 0; index < managementFunctions.Length; index++)
 {
     managementApi.WithEnvironment($"AzureFunctionsJobHost__functions__{index}", managementFunctions[index]);
 }
+
 if (builder.ExecutionContext.IsRunMode)
 {
     managementApi.WithEnvironment("DataStorage",
         productionData?.Resource.ConnectionStringExpression ?? tables.Resource.ConnectionStringExpression);
 }
+
+if (socialAccountsReadOnlyConnectionString is not null)
+{
+    managementApi.WithEnvironment("ConnectionStrings__social-accounts", socialAccountsReadOnlyConnectionString);
+}
+
 if (chat is not null)
 {
     managementApi.WithReference(chat);
@@ -200,7 +276,8 @@ if (chat is not null)
 
 // Keep shortener and Coffee schedules on one non-public Functions app.
 // Neither is copied into the public redirect app; opt in to each at cutover.
-var scheduledPosts = builder.AddAzureFunctionsProject<Projects.ShortenerTools_Functions>("shortenertools-scheduled-posts")
+var scheduledPosts = builder
+    .AddAzureFunctionsProject<Projects.ShortenerTools_Functions>("shortenertools-scheduled-posts")
     .WithHostStorage(hostStorage)
     .WithRoleAssignments(
         hostStorage,
@@ -237,6 +314,7 @@ for (var index = 0; index < coffeeTimers.Length; index++)
 {
     scheduledPosts.WithEnvironment($"AzureFunctionsJobHost__functions__{index + 1}", coffeeTimers[index]);
 }
+
 foreach (var timer in coffeeTimers)
 {
     redirect.WithEnvironment($"AzureWebJobs.{timer}.Disabled", "true");
@@ -250,6 +328,7 @@ foreach (var timer in coffeeTimers)
         scheduledPosts.WithEnvironment($"AzureWebJobs.{timer}.Disabled", coffeeSchedulerDisabled);
     }
 }
+
 if (builder.ExecutionContext.IsRunMode || isStaging)
 {
     scheduledPosts.WithEnvironment("AzureWebJobs.ShortPostTimer.Disabled", "true");
@@ -258,9 +337,15 @@ else
 {
     scheduledPosts.WithEnvironment("AzureWebJobs.ShortPostTimer.Disabled", schedulerDisabled);
 }
+
 if (builder.ExecutionContext.IsRunMode)
 {
     scheduledPosts.WithEnvironment("DataStorage", tables.Resource.ConnectionStringExpression);
+}
+
+if (socialAccountsReadOnlyConnectionString is not null)
+{
+    scheduledPosts.WithEnvironment("ConnectionStrings__social-accounts", socialAccountsReadOnlyConnectionString);
 }
 
 foreach (var (settingName, parameter) in scheduleSettings)
@@ -278,11 +363,34 @@ var admin = builder.AddProject<Projects.ShortenerTools_Admin>("admin")
     .WithEnvironment("Entra__AdministratorObjectId", administratorObjectId)
     .WithEnvironment("ASPNETCORE_FORWARDEDHEADERS_ENABLED", "true")
     .WithEnvironment("AdminApiKey", adminApiKey)
+    // The container user cannot write under /app, so deployed runs use the Azure Files mount declared above.
+    .WithEnvironment(context =>
+    {
+        if (!builder.ExecutionContext.IsRunMode) context.EnvironmentVariables["SocialPoster__DataDirectory"] = socialPosterMount;
+    })
     .PublishAsAzureContainerApp((_, app) =>
     {
-        app.Template.Scale.MinReplicas = 0;
+        app.Template.Volumes.Add(new ContainerAppVolume
+        {
+            Name = socialPosterShare,
+            StorageType = ContainerAppStorageType.AzureFile,
+            StorageName = socialPosterShare,
+            // SQLite cannot take byte-range locks over SMB; nobrl makes the share behave for a single writer.
+            MountOptions = "nobrl,dir_mode=0777,file_mode=0666,uid=0,gid=0"
+        });
+        app.Template.Containers[0].Value!.VolumeMounts.Add(new ContainerAppVolumeMount
+        {
+            VolumeName = socialPosterShare,
+            MountPath = socialPosterMount
+        });
+        // SocialPoster scheduling runs in the Admin host and must keep polling while idle.
+        app.Template.Scale.MinReplicas = 1;
         app.Template.Scale.MaxReplicas = 1;
     });
+if (socialAccountsConnectionString is not null)
+{
+    admin.WithEnvironment("ConnectionStrings__social-accounts", socialAccountsConnectionString);
+}
 
 if (appInsights is not null)
 {

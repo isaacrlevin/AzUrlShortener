@@ -41,7 +41,9 @@ public sealed class SocialMediaPublisher(
         });
         await SendAsync("Mastodon", post, async () =>
         {
-            var client = new MastodonClient("fosstodon.org", settings.MastodonAccessToken);
+            var client = new MastodonClient(
+                string.IsNullOrWhiteSpace(settings.MastodonInstance) ? "fosstodon.org" : settings.MastodonInstance,
+                settings.MastodonAccessToken);
             await client.PublishStatus(post.MastodonText ?? post.Text, Mastonet.Visibility.Public);
         });
         if (includeThreads)
@@ -54,6 +56,7 @@ public sealed class SocialMediaPublisher(
 
     private async Task SendAsync(string platform, SocialPost post, Func<Task> send)
     {
+        if (!post.Targets(platform)) return;
         try
         {
             await send();
@@ -89,6 +92,7 @@ public sealed class SocialMediaPublisher(
                 });
             }
         }
+
         foreach (var url in await BlueskyUtilities.ExtractUrls(text))
         {
             facets.Add(new Facet
@@ -97,6 +101,7 @@ public sealed class SocialMediaPublisher(
                 Features = [new FacetLink { Uri = url.url }]
             });
         }
+
         foreach (var tag in BlueskyUtilities.ExtractTags(text))
         {
             facets.Add(new Facet
