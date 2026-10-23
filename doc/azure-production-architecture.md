@@ -16,7 +16,7 @@ redirect hostname and existing managed certificate binding in the AppHost.
 |---|---|---|
 | Azure Container Apps environment (Consumption) | New | Shared hosting and ingress boundary for the four application containers |
 | `shortenertools-functions` Container App | New | Public HTTPS short-link redirects; exactly one replica, 0.25 vCPU / 0.5 GiB; only `UrlRedirect` enabled |
-| `admin` Container App | New | Public HTTPS, server-interactive Blazor administration; zero-to-one replicas; single-tenant Entra authentication |
+| `admin` Container App | New | Public HTTPS, server-interactive Blazor administration and SocialPoster scheduling; exactly one replica; single-tenant Entra authentication |
 | `management-api` Container App | New | Public HTTPS API in Production (internal in Staging) for URL management, statistics, description generation, and manual posting; zero-to-one replicas; all routes require the server-side API key |
 | `shortenertools-scheduled-posts` Container App | New | Internal-only worker; one replica; `SchedulePostTimer` plus three Coffee timers; independently disabled by default until intentional cutovers |
 | Azure Container Registry | New | Stores the built application images used by the Container Apps |
@@ -75,7 +75,7 @@ the names above use the stable Aspire logical resource names where available.
 graph LR
   Visitors[Short-link visitors] -->|Public HTTPS| Redirect["shortenertools-functions<br/>1 replica · UrlRedirect only"]
   AdminUser[Administrator] -->|OIDC sign-in| Entra[Microsoft Entra ID]
-  Entra --> Admin["admin<br/>Public HTTPS · 0–1 replicas"]
+  Entra --> Admin["admin<br/>Public HTTPS · 1 replica"]
   Admin -->|"HTTPS · service discovery<br/>server-only API key"| API["management-api<br/>Production public · Staging internal · 0–1 replicas"]
   API -->|"Table endpoint · managed identity"| Data[("Existing Storage<br/>UrlsDetails + ClickStats")]
   Redirect -->|"Table endpoint · managed identity"| Data

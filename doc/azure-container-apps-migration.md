@@ -303,11 +303,11 @@ redirects/day, external requests are well below the shared 2-million/month ACA a
 actual duration and the runtime's eligibility for idle rates. A process that remains active will cost more than the idle
 estimate.
 
-The scheduler adds another warm container, so the $6 redirect-only estimate is **not** the total project bill. Admin and
-API scale to zero when unused; an open Blazor server connection keeps the admin active. Registry, storage, Application
-Insights/Log Analytics ingestion and retention, outbound transfer, AI, and social/email services are additional. Review
-monitoring volume, sampling, retention and caps after deployment. One replica removes scale-to-zero cold starts but is
-not an uptime guarantee or zero-downtime promise during upgrades.
+The scheduler and admin add two more warm containers, so the $6 redirect-only estimate is **not** the total project
+bill. Admin keeps one replica so SocialPoster scheduling keeps polling; the API scales to zero when unused. Registry,
+storage, Application Insights/Log Analytics ingestion and retention, outbound transfer, AI, and social/email services
+are additional. Review monitoring volume, sampling, retention and caps after deployment. One replica removes
+scale-to-zero cold starts but is not an uptime guarantee or zero-downtime promise during upgrades.
 
 ACA Consumption grants are shared per subscription: 180,000 vCPU-seconds, 360,000 GiB-seconds, and 2 million external
 HTTP requests/month. The old ARM template specified SWA Standard (roughly $9/month at illustrative US pricing) and
