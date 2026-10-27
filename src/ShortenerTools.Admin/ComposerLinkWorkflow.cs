@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using MudBlazor;
+using Polly;
 using ShortenerTools.Core.Domain;
 using ShortenerTools.Core.Messages;
 using SocialPoster.Components;
@@ -65,8 +66,7 @@ public sealed class ComposerLinkWorkflow(IHttpClientFactory clients, ContactServ
                 : submission.BaseTemplate,
             Posts = StageForTimer ? await StagedPostsAsync(submission, source) : null
         };
-        using var client = clients.CreateClient("management");
-        using var response = await client.PostAsJsonAsync("/api/UrlCreate", request);
+        using var response = await SendCreateAsync(request);
         if (!response.IsSuccessStatusCode)
         {
             var message = "The short link could not be created. Nothing was published or scheduled.";
@@ -115,6 +115,23 @@ public sealed class ComposerLinkWorkflow(IHttpClientFactory clients, ContactServ
             Templates = submission.Templates.ToDictionary(pair => pair.Key,
                 pair => Rewrite(pair.Value, source, previous, link.ShortUrl))
         };
+    }
+
+    // The composer only reports the exception types it expects; anything else escapes and kills the circuit,
+    // leaving Publish spinning. Resilience rejections (e.g. a cold management API) become a retryable message.
+    private async Task<HttpResponseMessage> SendCreateAsync(ShortUrlRequest request)
+    {
+        using var client = clients.CreateClient("management");
+        try
+        {
+            return await client.PostAsJsonAsync("/api/UrlCreate", request);
+        }
+        catch (ExecutionRejectedException exception)
+        {
+            throw new InvalidOperationException(
+                "The link service did not respond in time. Nothing was published or scheduled; try again.",
+                exception);
+        }
     }
 
     private static string Rewrite(string text, string source, string previous, string shortUrl)

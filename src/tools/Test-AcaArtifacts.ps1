@@ -91,7 +91,9 @@ foreach ($app in @($redirect, $scheduler)) {
     Assert-Condition ($app.properties.template.scale.minReplicas -eq 1 -and
         $app.properties.template.scale.maxReplicas -eq 1) 'Redirect and scheduler must each have exactly one replica.'
 }
-Assert-Condition ($api.properties.template.scale.minReplicas -eq 0) 'Management API must support scale-to-zero.'
+# Admin publishing calls the API interactively, so a cold start must not sit in front of Publish.
+Assert-Condition ($api.properties.template.scale.minReplicas -eq 1 -and
+    $api.properties.template.scale.maxReplicas -eq 1) 'Management API must stay warm with exactly one replica.'
 # SocialPoster scheduling runs in the Admin host, so it must stay warm.
 Assert-Condition ($admin.properties.template.scale.minReplicas -eq 1 -and
     $admin.properties.template.scale.maxReplicas -eq 1) 'Admin must have exactly one replica for SocialPoster scheduling.'

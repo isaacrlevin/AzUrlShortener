@@ -238,7 +238,8 @@ var managementApi = managementApiProject
     .WithEnvironment("EnableDescriptionGeneration", (!isStaging).ToString())
     .PublishAsAzureContainerApp((_, app) =>
     {
-        app.Template.Scale.MinReplicas = 0;
+        // Admin publishing calls this API interactively; a ~20s cold start stalled Publish, so keep it warm.
+        app.Template.Scale.MinReplicas = 1;
         app.Template.Scale.MaxReplicas = 1;
     });
 

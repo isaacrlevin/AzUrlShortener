@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Moq;
+using Polly.Timeout;
 using ShortenerTools.Admin;
 using ShortenerTools.Core.Messages;
 using SocialPoster.Components;
@@ -132,6 +133,19 @@ public class ComposerLinkWorkflowTests
     }
 
     [TestMethod]
+    public async Task ResilienceTimeoutStopsSubmissionWithAMessageTheComposerReports()
+    {
+        // The composer only catches InvalidOperationException and friends; a raw Polly rejection killed the circuit.
+        using var handler = new LinkApi { Failure = new TimeoutRejectedException(TimeSpan.FromSeconds(10)) };
+        var workflow = Workflow(handler);
+        var exception =
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => workflow.PrepareAsync(Submission()));
+        StringAssert.Contains(exception.Message, "did not respond in time");
+        Assert.IsInstanceOfType<TimeoutRejectedException>(exception.InnerException);
+        Assert.AreEqual("", workflow.LastShortUrl);
+    }
+
+    [TestMethod]
     public async Task ChangingVanityReplacesThePreviousShortUrl()
     {
         using var handler = new LinkApi();
@@ -183,10 +197,12 @@ public class ComposerLinkWorkflowTests
         public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
         public string ShortUrl { get; set; } = Short;
         public bool FailOnce { get; set; }
+        public Exception? Failure { get; set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             Requests.Add((await request.Content!.ReadFromJsonAsync<ShortUrlRequest>(ct))!);
+            if (Failure is not null) throw Failure;
             if (FailOnce)
             {
                 FailOnce = false;

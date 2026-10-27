@@ -40,7 +40,7 @@ See [local development and debugging instructions](./src/ShortenerTools.Admin/RE
 
 ## How To Deploy
 
-Follow the [Container Apps deployment and migration guide](./doc/azure-container-apps-migration.md) for Entra setup, existing Table Storage, Aspire deployment, GitHub Actions inputs, custom-domain cutover, rollback, and costs. This branch deploys to Azure Container Apps, not Static Web Apps or an Azure Functions hosting resource. The public redirect stays at one replica; admin and management API can scale to zero.
+Follow the [Container Apps deployment and migration guide](./doc/azure-container-apps-migration.md) for Entra setup, existing Table Storage, Aspire deployment, GitHub Actions inputs, custom-domain cutover, rollback, and costs. This branch deploys to Azure Container Apps, not Static Web Apps or an Azure Functions hosting resource. The public redirect, admin and management API each keep one warm replica.
 
 For manual production workflow setup, secure import of local social/email and AI settings, and the default-disabled scheduler cutover, see [production deployment](./doc/production-deployment.md). Pushes validate only; production deployment is an intentional manual run from `main`.
 

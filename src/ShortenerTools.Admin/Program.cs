@@ -26,6 +26,8 @@ builder.Services.AddSocialPosterCore(options =>
 builder.Services.AddSocialPosterScheduling(options =>
     builder.Configuration.GetSection("SocialPoster:Scheduling").Bind(options));
 builder.Services.AddSocialPosterSchedulingWorker();
+builder.Services.AddSingleton<SocialPosterStorage>();
+builder.Services.AddHostedService(services => services.GetRequiredService<SocialPosterStorage>());
 builder.Services.AddSocialPosterComponents(options => options.BasePath = "socialposter");
 builder.Services.AddHostedService<SocialAccountsConfigurationPublisher>();
 builder.Services.AddScoped<ComposerLinkWorkflow>();
@@ -86,12 +88,21 @@ builder.Services.AddOptions<OpenIdConnectOptions>(OpenIdConnectDefaults.Authenti
         "AdminApiKey must be configured.")
     .ValidateOnStart();
 builder.Services.AddAuthorization();
+#pragma warning disable EXTEXP0001 // Replace inherited resilience for requests that outlast its 10s attempt timeout.
+// A management API cold start (image pull plus Functions host start) takes about 20s.
 builder.Services.AddHttpClient("management", client =>
-{
-    client.BaseAddress = new Uri("https+http://management-api");
-    client.DefaultRequestHeaders.Add("X-Admin-Api-Key", RequiredSetting("AdminApiKey"));
-});
-#pragma warning disable EXTEXP0001 // Replace inherited resilience only for slow AI requests.
+    {
+        client.BaseAddress = new Uri("https+http://management-api");
+        client.DefaultRequestHeaders.Add("X-Admin-Api-Key", RequiredSetting("AdminApiKey"));
+    })
+    .RemoveAllResilienceHandlers()
+    .AddStandardResilienceHandler(options =>
+    {
+        options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(60);
+        options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(90);
+        options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(120);
+        options.Retry.DisableForUnsafeHttpMethods();
+    });
 builder.Services.AddHttpClient("description", client =>
     {
         client.BaseAddress = new Uri("https+http://management-api");
@@ -112,12 +123,27 @@ builder.Services.AddScoped(services =>
 
 var app = builder.Build();
 Directory.CreateDirectory(Path.Combine(Path.GetFullPath(socialPosterDataDirectory), "keys"));
-await app.Services.InitializeSocialPosterAsync();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/error");
     app.UseHsts();
 }
+
+// SocialPosterStorage opens the database after the host is listening; hold requests briefly until it is ready.
+var socialPosterStorage = app.Services.GetRequiredService<SocialPosterStorage>();
+app.Use(async (context, next) =>
+{
+    if (socialPosterStorage.IsReady ||
+        await socialPosterStorage.WaitAsync(TimeSpan.FromSeconds(15), context.RequestAborted))
+    {
+        await next();
+        return;
+    }
+
+    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+    context.Response.Headers.RetryAfter = "5";
+    await context.Response.WriteAsync("SocialPoster is starting. Refresh in a few seconds.");
+});
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();

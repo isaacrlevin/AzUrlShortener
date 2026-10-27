@@ -29,16 +29,19 @@ public sealed class SocialAccountsConfigurationPublisher : BackgroundService
     ];
 
     private readonly SecretStore _secretStore;
+    private readonly SocialPosterStorage _storage;
     private readonly IConfiguration _configuration;
     private readonly ILogger<SocialAccountsConfigurationPublisher> _logger;
     private readonly Dictionary<string, string> _lastPublished = new(StringComparer.Ordinal);
 
     public SocialAccountsConfigurationPublisher(
         SecretStore secretStore,
+        SocialPosterStorage storage,
         IConfiguration configuration,
         ILogger<SocialAccountsConfigurationPublisher> logger)
     {
         _secretStore = secretStore;
+        _storage = storage;
         _configuration = configuration;
         _logger = logger;
     }
@@ -53,6 +56,8 @@ public sealed class SocialAccountsConfigurationPublisher : BackgroundService
             return;
         }
 
+        // Never read the store before it opens; an unavailable store must not publish cleared accounts.
+        await _storage.WaitAsync(stoppingToken);
         var client = new ConfigurationClient(connectionString);
         while (!stoppingToken.IsCancellationRequested)
         {

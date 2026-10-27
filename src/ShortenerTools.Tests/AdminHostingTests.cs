@@ -99,6 +99,18 @@ public class AdminHostingTests
     }
 
     [TestMethod]
+    public async Task ManagementClientOutlastsAManagementApiColdStart()
+    {
+        await using var application = new AdminFactory();
+        var options = application.Services
+            .GetRequiredService<Microsoft.Extensions.Options.IOptionsMonitor<
+                Microsoft.Extensions.Http.Resilience.HttpStandardResilienceOptions>>()
+            .Get("management-standard");
+        Assert.AreEqual(TimeSpan.FromSeconds(60), options.AttemptTimeout.Timeout);
+        Assert.AreEqual(TimeSpan.FromSeconds(90), options.TotalRequestTimeout.Timeout);
+    }
+
+    [TestMethod]
     public async Task DescriptionClientAllowsSlowResponsesWithoutRetryingPosts()
     {
         await using var application = new AdminFactory();

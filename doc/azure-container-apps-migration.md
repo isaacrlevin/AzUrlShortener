@@ -9,7 +9,7 @@ resources are provisioned until you deliberately deploy.
 | Service                          | Ingress                                         | Scaling and functions                                                                                                                      |
 |----------------------------------|-------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
 | `shortenertools-functions`       | Public HTTPS                                    | Exactly one replica, 0.25 vCPU / 0.5 GiB; only `UrlRedirect`                                                                               |
-| `management-api`                 | Public HTTPS in Production; internal in Staging | Minimum zero, maximum one; management, statistics, description-generation and manual social-post endpoints, protected by `X-Admin-Api-Key` |
+| `management-api`                 | Public HTTPS in Production; internal in Staging | Exactly one replica (kept warm for admin publishing); management, statistics, description-generation and manual social-post endpoints, protected by `X-Admin-Api-Key` |
 | `admin`                          | Public HTTPS                                    | Minimum zero, maximum one; server-interactive Blazor with Microsoft Entra sign-in                                                          |
 | `shortenertools-scheduled-posts` | Internal only                                   | Exactly one replica; `SchedulePostTimer` and the three Coffee timers; independent cutover gates                                            |
 
@@ -303,8 +303,9 @@ redirects/day, external requests are well below the shared 2-million/month ACA a
 actual duration and the runtime's eligibility for idle rates. A process that remains active will cost more than the idle
 estimate.
 
-The scheduler and admin add two more warm containers, so the $6 redirect-only estimate is **not** the total project
-bill. Admin keeps one replica so SocialPoster scheduling keeps polling; the API scales to zero when unused. Registry,
+The scheduler, admin and management API add three more warm containers, so the $6 redirect-only estimate is **not**
+the total project bill. Admin keeps one replica so SocialPoster scheduling keeps polling; the API keeps one so Publish
+does not wait on a cold start. Registry,
 storage, Application Insights/Log Analytics ingestion and retention, outbound transfer, AI, and social/email services
 are additional. Review monitoring volume, sampling, retention and caps after deployment. One replica removes
 scale-to-zero cold starts but is not an uptime guarantee or zero-downtime promise during upgrades.
