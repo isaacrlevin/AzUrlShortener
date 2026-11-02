@@ -15,6 +15,12 @@ public sealed class SocialAccountsConfigurationPublisher : BackgroundService
 {
     private const string SentinelKey = "SocialPoster:Accounts:Sentinel";
 
+    private static readonly TimeSpan SyncInterval = TimeSpan.FromSeconds(5);
+
+    // While the empty-store guard is active every pass issues a remote read; poll slowly to stay within
+    // low request quotas (Developer tier: 3,000 included requests/day, 6,000/hour).
+    private static readonly TimeSpan GuardedSyncInterval = TimeSpan.FromSeconds(60);
+
     // Store keys must be SocialPoster's persisted names (e.g. "bluesky.handle"), not the constant names.
     private static readonly (string StoreKey, string ConfigKey)[] AccountSettings =
     [
@@ -63,9 +69,13 @@ public sealed class SocialAccountsConfigurationPublisher : BackgroundService
         var client = new ConfigurationClient(connectionString);
         while (!stoppingToken.IsCancellationRequested)
         {
+            var delay = SyncInterval;
             try
             {
-                await SynchronizeAsync(client, stoppingToken);
+                if (await SynchronizeAsync(client, stoppingToken))
+                {
+                    delay = GuardedSyncInterval;
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -76,34 +86,29 @@ public sealed class SocialAccountsConfigurationPublisher : BackgroundService
                 _logger.LogError(exception, "Could not sync SocialPoster account settings to Azure App Configuration.");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+            await Task.Delay(delay, stoppingToken);
         }
     }
 
+    // One list request instead of one GET per key, so the guard stays cheap on low-request-quota tiers.
     private static async Task<bool> RemoteHasAccountValuesAsync(ConfigurationClient client,
         CancellationToken cancellationToken)
     {
-        foreach (var (_, configKey) in AccountSettings)
+        var accountKeys = AccountSettings.Select(setting => setting.ConfigKey).ToHashSet(StringComparer.Ordinal);
+        var selector = new SettingSelector { KeyFilter = "Shortener:*" };
+        await foreach (var setting in client.GetConfigurationSettingsAsync(selector, cancellationToken))
         {
-            try
+            if (accountKeys.Contains(setting.Key) && !string.IsNullOrEmpty(setting.Value))
             {
-                var response =
-                    await client.GetConfigurationSettingAsync(configKey, cancellationToken: cancellationToken);
-                if (!string.IsNullOrEmpty(response.Value.Value))
-                {
-                    return true;
-                }
-            }
-            catch (RequestFailedException exception) when (exception.Status == 404)
-            {
-                // Key not present remotely; nothing to protect.
+                return true;
             }
         }
 
         return false;
     }
 
-    private async Task SynchronizeAsync(ConfigurationClient client, CancellationToken cancellationToken)
+    /// <returns><c>true</c> when publishing was skipped by the empty-store guard.</returns>
+    private async Task<bool> SynchronizeAsync(ConfigurationClient client, CancellationToken cancellationToken)
     {
         var snapshot = await _secretStore.GetSnapshotAsync(
             AccountSettings.Select(setting => setting.StoreKey).ToArray(), cancellationToken);
@@ -124,7 +129,7 @@ public sealed class SocialAccountsConfigurationPublisher : BackgroundService
                 _loggedEmptyStoreGuard = true;
             }
 
-            return;
+            return true;
         }
 
         _loggedEmptyStoreGuard = false;
@@ -154,5 +159,7 @@ public sealed class SocialAccountsConfigurationPublisher : BackgroundService
                 cancellationToken: cancellationToken);
             _logger.LogInformation("SocialPoster account settings were synchronized to Azure App Configuration.");
         }
+
+        return false;
     }
 }
