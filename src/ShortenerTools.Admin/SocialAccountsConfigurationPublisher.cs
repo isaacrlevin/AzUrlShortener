@@ -1,5 +1,6 @@
 #nullable enable
 
+using Azure;
 using Azure.Data.AppConfiguration;
 using SocialPoster.Core.Services;
 using SocialPoster.Posting.Services;
@@ -33,6 +34,7 @@ public sealed class SocialAccountsConfigurationPublisher : BackgroundService
     private readonly IConfiguration _configuration;
     private readonly ILogger<SocialAccountsConfigurationPublisher> _logger;
     private readonly Dictionary<string, string> _lastPublished = new(StringComparer.Ordinal);
+    private bool _loggedEmptyStoreGuard;
 
     public SocialAccountsConfigurationPublisher(
         SecretStore secretStore,
@@ -78,11 +80,54 @@ public sealed class SocialAccountsConfigurationPublisher : BackgroundService
         }
     }
 
+    private static async Task<bool> RemoteHasAccountValuesAsync(ConfigurationClient client,
+        CancellationToken cancellationToken)
+    {
+        foreach (var (_, configKey) in AccountSettings)
+        {
+            try
+            {
+                var response =
+                    await client.GetConfigurationSettingAsync(configKey, cancellationToken: cancellationToken);
+                if (!string.IsNullOrEmpty(response.Value.Value))
+                {
+                    return true;
+                }
+            }
+            catch (RequestFailedException exception) when (exception.Status == 404)
+            {
+                // Key not present remotely; nothing to protect.
+            }
+        }
+
+        return false;
+    }
+
     private async Task SynchronizeAsync(ConfigurationClient client, CancellationToken cancellationToken)
     {
         var snapshot = await _secretStore.GetSnapshotAsync(
             AccountSettings.Select(setting => setting.StoreKey).ToArray(), cancellationToken);
         var changed = false;
+
+        // Before this process has published anything, an entirely empty store looks the same as a wiped
+        // one (recreated file share, restored subscription). Do not overwrite existing remote accounts
+        // with blanks in that case; clearing accounts at runtime still publishes normally.
+        if (_lastPublished.Count == 0
+            && AccountSettings.All(setting => string.IsNullOrEmpty(snapshot.GetValueOrDefault(setting.StoreKey)))
+            && await RemoteHasAccountValuesAsync(client, cancellationToken))
+        {
+            if (!_loggedEmptyStoreGuard)
+            {
+                _logger.LogWarning(
+                    "SocialPoster has no account settings but Azure App Configuration still holds values. " +
+                    "Skipping publish to avoid wiping them; re-enter accounts or restore the data directory.");
+                _loggedEmptyStoreGuard = true;
+            }
+
+            return;
+        }
+
+        _loggedEmptyStoreGuard = false;
 
         foreach (var (storeKey, configKey) in AccountSettings)
         {
